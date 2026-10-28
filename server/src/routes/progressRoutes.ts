@@ -7,7 +7,7 @@ const router = Router();
 // POST check-in progress
 router.post('/:id/checkin', async (req: Request, res: Response) => {
   try {
-    const { userId, count, note } = req.body;
+    const { userId, userName, username, photoUrl, count, note } = req.body;
 
     if (!userId || !count) {
       return res.status(400).json({
@@ -20,6 +20,9 @@ router.post('/:id/checkin', async (req: Request, res: Response) => {
     const result = await ChallengeService.addCheckIn({
       challengeId,
       userId: Number(userId),
+      userName,
+      username,
+      photoUrl,
       count: Number(count),
       note,
     });

@@ -31,6 +31,9 @@ export interface JoinChallengeInput {
 export interface AddCheckInInput {
   challengeId: string;
   userId: number;
+  userName?: string;
+  username?: string;
+  photoUrl?: string;
   count: number;
   note?: string;
 }
@@ -165,13 +168,27 @@ export class ChallengeService {
       throw new Error('Check-in count must be greater than zero');
     }
 
-    const participant = await Participant.findOne({
+    let participant = await Participant.findOne({
       challengeId: input.challengeId,
       userId: input.userId,
     });
 
     if (!participant) {
-      throw new Error('User is not a participant in this challenge');
+      participant = await Participant.create({
+        challengeId: input.challengeId,
+        userId: input.userId,
+        userName: input.userName || `User ${input.userId}`,
+        username: input.username,
+        photoUrl: input.photoUrl,
+        totalProgress: 0,
+        currentStreak: 0,
+        bestStreak: 0,
+        status: 'active',
+      });
+
+      await Challenge.findByIdAndUpdate(input.challengeId, {
+        $inc: { participantCount: 1 },
+      });
     }
 
     const todayStr = ProgressService.formatDate(new Date());

@@ -3,12 +3,13 @@ import { useTelegram } from './hooks/useTelegram';
 import { Challenge, LeaderboardUser, FriendProgress } from './types';
 import { Header } from './components/Header';
 import { AnalyticsBanner } from './components/AnalyticsBanner';
+import { ChallengeSwitcher } from './components/ChallengeSwitcher';
 import { ChallengeCard } from './components/ChallengeCard';
 import { Leaderboard } from './components/Leaderboard';
 import { CheckInModal } from './components/CheckInModal';
 import { FriendProgressModal } from './components/FriendProgressModal';
 import { CreateChallengeModal } from './components/CreateChallengeModal';
-import { RefreshCw, Trophy, Flame, AlertCircle } from 'lucide-react';
+import { RefreshCw, AlertCircle } from 'lucide-react';
 
 export function App() {
   const { user, triggerHaptic, tg } = useTelegram();
@@ -18,7 +19,11 @@ export function App() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [joining, setJoining] = useState<boolean>(false);
   const [showAnalytics, setShowAnalytics] = useState<boolean>(false);
+
+  // Set of challenge IDs user has joined
+  const [joinedChallengeIds, setJoinedChallengeIds] = useState<Set<string>>(new Set());
 
   // Modals state
   const [isCheckInOpen, setIsCheckInOpen] = useState<boolean>(false);
@@ -34,8 +39,12 @@ export function App() {
       const json = await res.json();
       if (json.success && json.data?.length > 0) {
         setChallenges(json.data);
-        // Default to the first active challenge (e.g. 3000 pushups)
-        setSelectedChallenge((prev) => prev || json.data[0]);
+        setSelectedChallenge((prev) => {
+          if (!prev) return json.data[0];
+          // Keep current selection if still valid, otherwise first
+          const found = json.data.find((c: Challenge) => c._id === prev._id);
+          return found || json.data[0];
+        });
       }
     } catch (err) {
       console.error('Failed to fetch challenges:', err);
@@ -48,12 +57,18 @@ export function App() {
       const res = await fetch(`/api/challenges/${challengeId}/leaderboard`);
       const json = await res.json();
       if (json.success) {
-        setLeaderboard(json.data || []);
+        const board: LeaderboardUser[] = json.data || [];
+        setLeaderboard(board);
+
+        // Check if user is in this board
+        if (board.some((p) => p.userId === user.id)) {
+          setJoinedChallengeIds((prev) => new Set(prev).add(challengeId));
+        }
       }
     } catch (err) {
       console.error('Failed to fetch leaderboard:', err);
     }
-  }, []);
+  }, [user.id]);
 
   // Load initial data
   const loadData = useCallback(async () => {
@@ -85,6 +100,37 @@ export function App() {
     setRefreshing(false);
   };
 
+  // Join a challenge
+  const handleJoinChallenge = async () => {
+    if (!selectedChallenge) return;
+    try {
+      setJoining(true);
+      triggerHaptic('medium');
+
+      const res = await fetch(`/api/challenges/${selectedChallenge._id}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          userName: user.first_name,
+          username: user.username,
+          photoUrl: user.photo_url,
+        }),
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        triggerHaptic('success');
+        setJoinedChallengeIds((prev) => new Set(prev).add(selectedChallenge._id));
+        await Promise.all([fetchChallenges(), fetchLeaderboard(selectedChallenge._id)]);
+      }
+    } catch (err) {
+      console.error('Failed to join challenge:', err);
+    } finally {
+      setJoining(false);
+    }
+  };
+
   // Submit check-in
   const handleCheckIn = async (count: number, note?: string) => {
     if (!selectedChallenge) return;
@@ -94,6 +140,9 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         userId: user.id,
+        userName: user.first_name,
+        username: user.username,
+        photoUrl: user.photo_url,
         count,
         note,
       }),
@@ -101,7 +150,7 @@ export function App() {
 
     const json = await res.json();
     if (json.success) {
-      // Refresh challenge tally and leaderboard
+      setJoinedChallengeIds((prev) => new Set(prev).add(selectedChallenge._id));
       await Promise.all([fetchChallenges(), fetchLeaderboard(selectedChallenge._id)]);
     } else {
       throw new Error(json.error || 'Failed to check in');
@@ -160,8 +209,9 @@ export function App() {
     }
   };
 
-  // Current user's progress record
+  // Current user's progress record & join status
   const currentUserProgress = leaderboard.find((p) => p.userId === user.id);
+  const isJoined = Boolean(currentUserProgress || (selectedChallenge && joinedChallengeIds.has(selectedChallenge._id)));
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex justify-center selection:bg-blue-600">
@@ -188,26 +238,16 @@ export function App() {
           />
         )}
 
-        {/* Challenge selector pills if multiple exist */}
-        {challenges.length > 1 && (
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-            {challenges.map((c) => (
-              <button
-                key={c._id}
-                onClick={() => {
-                  triggerHaptic('light');
-                  setSelectedChallenge(c);
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                  selectedChallenge?._id === c._id
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                    : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
-                }`}
-              >
-                {c.title}
-              </button>
-            ))}
-          </div>
+        {/* Option A: Segmented Carousel Switcher for Multiple Challenges */}
+        {challenges.length > 0 && selectedChallenge && (
+          <ChallengeSwitcher
+            challenges={challenges}
+            selectedChallengeId={selectedChallenge._id}
+            onSelect={(c) => setSelectedChallenge(c)}
+            onOpenCreate={() => setIsCreateOpen(true)}
+            joinedChallengeIds={joinedChallengeIds}
+            triggerHaptic={triggerHaptic}
+          />
         )}
 
         {/* Main Challenge Card */}
@@ -217,6 +257,9 @@ export function App() {
           <ChallengeCard
             challenge={selectedChallenge}
             currentUserProgress={currentUserProgress}
+            isJoined={isJoined}
+            joining={joining}
+            onJoin={handleJoinChallenge}
             onOpenCheckIn={() => {
               triggerHaptic('light');
               setIsCheckInOpen(true);
