@@ -46,7 +46,10 @@ export const AnalyticsBanner: React.FC<AnalyticsBannerProps> = ({
       : 0;
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xl select-none">
+    <div
+      className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-5 select-none isolate"
+      style={{ transform: 'translateZ(0)', WebkitTransform: 'translateZ(0)' }}
+    >
       {/* Header & Mode Switcher */}
       <div className="flex flex-col gap-3 mb-4 pb-3 border-b border-slate-800">
         <div className="flex items-center justify-between">
@@ -67,14 +70,14 @@ export const AnalyticsBanner: React.FC<AnalyticsBannerProps> = ({
           </span>
         </div>
 
-        {/* View Toggle Tabs */}
-        <div className="grid grid-cols-2 p-1 bg-slate-950 rounded-2xl border border-slate-800/80 gap-1">
+        {/* View Toggle Tabs - Clean, no transforms/shadows to prevent mobile GPU dirty rect glitch */}
+        <div className="grid grid-cols-2 p-1 bg-slate-950 rounded-2xl border border-slate-800/80 gap-1 overflow-hidden">
           <button
             type="button"
             onClick={() => setViewMode('squad')}
-            className={`py-1.5 px-2 text-xs font-bold rounded-xl transition-all focus:outline-none focus:ring-0 active:scale-95 ${
+            className={`py-2 px-3 text-xs font-bold rounded-xl transition-colors duration-150 focus:outline-none ${
               viewMode === 'squad'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                ? 'bg-blue-600 text-white'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -83,9 +86,9 @@ export const AnalyticsBanner: React.FC<AnalyticsBannerProps> = ({
           <button
             type="button"
             onClick={() => setViewMode('challenge')}
-            className={`py-1.5 px-2 text-xs font-bold rounded-xl transition-all focus:outline-none focus:ring-0 active:scale-95 truncate ${
+            className={`py-2 px-3 text-xs font-bold rounded-xl transition-colors duration-150 focus:outline-none ${
               viewMode === 'challenge'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                ? 'bg-blue-600 text-white'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -96,7 +99,7 @@ export const AnalyticsBanner: React.FC<AnalyticsBannerProps> = ({
 
       {/* METRIC GRIDS */}
       {viewMode === 'squad' ? (
-        <>
+        <div>
           <div className="grid grid-cols-2 gap-2.5 mb-3.5">
             <div className="bg-slate-950/70 p-3 rounded-2xl border border-slate-800/60">
               <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mb-1">
@@ -166,9 +169,9 @@ export const AnalyticsBanner: React.FC<AnalyticsBannerProps> = ({
               />
             </div>
           </div>
-        </>
+        </div>
       ) : (
-        <>
+        <div>
           <div className="grid grid-cols-2 gap-2.5 mb-3.5">
             <div className="bg-slate-950/70 p-3 rounded-2xl border border-slate-800/60">
               <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mb-1">
@@ -211,7 +214,7 @@ export const AnalyticsBanner: React.FC<AnalyticsBannerProps> = ({
               />
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
