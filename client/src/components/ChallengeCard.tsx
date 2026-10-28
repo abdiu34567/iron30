@@ -57,7 +57,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
         <button
           onClick={onShare}
           className="p-1.5 text-slate-400 hover:text-white bg-slate-800/60 rounded-xl transition-colors"
-          title="Share to Group"
+          aria-label="Share to Group"
         >
           <Share2 className="w-4 h-4" />
         </button>

@@ -46,29 +46,35 @@ export const AnalyticsBanner: React.FC<AnalyticsBannerProps> = ({
       : 0;
 
   return (
-    <div className="bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-5 shadow-2xl animate-fade-in">
-      {/* Header & Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-4 pb-3 border-b border-slate-800/80">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-blue-500/20 text-blue-400 rounded-xl">
-            <Trophy className="w-4 h-4" />
+    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xl select-none">
+      {/* Header & Mode Switcher */}
+      <div className="flex flex-col gap-3 mb-4 pb-3 border-b border-slate-800">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-blue-500/20 text-blue-400 rounded-xl shrink-0">
+              <Trophy className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-white">
+                Squad Analytics Pulse
+              </h3>
+              <span className="text-[10px] text-slate-400">Live consistency across the squad</span>
+            </div>
           </div>
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-white">
-              Group Analytics Pulse
-            </h3>
-            <span className="text-[10px] text-slate-400">Live group consistency & activity</span>
-          </div>
+
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+            Live Sync
+          </span>
         </div>
 
-        {/* View Toggle */}
-        <div className="flex items-center p-0.5 bg-slate-950 rounded-xl border border-slate-800/80 self-start sm:self-auto">
+        {/* View Toggle Tabs */}
+        <div className="grid grid-cols-2 p-1 bg-slate-950 rounded-2xl border border-slate-800/80 gap-1">
           <button
             type="button"
             onClick={() => setViewMode('squad')}
-            className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all ${
+            className={`py-1.5 px-2 text-xs font-bold rounded-xl transition-all focus:outline-none focus:ring-0 active:scale-95 ${
               viewMode === 'squad'
-                ? 'bg-blue-600 text-white shadow-sm'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -77,9 +83,9 @@ export const AnalyticsBanner: React.FC<AnalyticsBannerProps> = ({
           <button
             type="button"
             onClick={() => setViewMode('challenge')}
-            className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all truncate max-w-[130px] ${
+            className={`py-1.5 px-2 text-xs font-bold rounded-xl transition-all focus:outline-none focus:ring-0 active:scale-95 truncate ${
               viewMode === 'challenge'
-                ? 'bg-blue-600 text-white shadow-sm'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
                 : 'text-slate-400 hover:text-white'
             }`}
           >

@@ -43,7 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
               ? 'bg-blue-600/30 text-blue-400 border border-blue-500/40'
               : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800'
           }`}
-          title="Toggle Group Analytics"
+          aria-label="Toggle Group Analytics"
         >
           <BarChart3 className="w-5 h-5" />
         </button>

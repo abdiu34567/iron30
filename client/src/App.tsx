@@ -299,7 +299,7 @@ export function App() {
             onClick={handleRefresh}
             disabled={refreshing}
             className="p-3 rounded-full bg-slate-850/90 hover:bg-slate-800 border border-slate-700/80 text-slate-300 shadow-xl backdrop-blur-md active:scale-90 transition-all"
-            title="Refresh Leaderboard"
+            aria-label="Refresh Leaderboard"
           >
             <RefreshCw
               className={`w-5 h-5 ${refreshing ? 'animate-spin text-blue-400' : ''}`}
