@@ -18,12 +18,12 @@ export function setupBot(): Bot | null {
 
     const webAppUrl = process.env.WEBAPP_URL || 'https://t.me';
 
-    // Handle /start command
-    bot.command('start', async (ctx) => {
+    // Handle /start, /app, /hub, /challenge commands
+    bot.command(['start', 'app', 'hub', 'challenge'], async (ctx) => {
       const keyboard = new InlineKeyboard().webApp('🛡️ Open Iron30', webAppUrl);
 
       await ctx.reply(
-        `👋 Welcome to *Iron30*!\n\nForge unbreakable habits & challenges with your friends, log your daily progress, and stay accountable.\n\nTap below to open the app! 👇`,
+        `🛡️ *Iron30 Challenge Hub*\n\nTrack your progress, view the group leaderboard, and inspect your friends' 30-day consistency heatmaps.\n\nTap below to open the app anytime! 👇`,
         {
           parse_mode: 'Markdown',
           reply_markup: keyboard,
