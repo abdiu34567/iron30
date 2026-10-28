@@ -1,7 +1,7 @@
 {
-  "name": "auto-challenges-server",
+  "name": "iron30-server",
   "version": "1.0.0",
-  "description": "Backend API and Telegram Bot for Auto-Challenges Telegram Mini App",
+  "description": "Backend API and Telegram Bot for Iron30 Telegram Mini App",
   "main": "dist/index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",

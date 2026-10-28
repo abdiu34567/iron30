@@ -148,7 +148,7 @@ export function App() {
   const handleShare = () => {
     triggerHaptic('medium');
     const text = encodeURIComponent(
-      `🔥 Join me in the "${selectedChallenge?.title}" challenge on Auto-Challenges! Let's crush this together:`
+      `🔥 Join me in the "${selectedChallenge?.title}" challenge on Iron30! Let's crush this together:`
     );
     const url = encodeURIComponent(window.location.origin);
     const tgShareUrl = `https://t.me/share/url?url=${url}&text=${text}`;

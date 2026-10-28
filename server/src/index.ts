@@ -50,7 +50,7 @@ async function bootstrap() {
 
     // Start Express HTTP Server
     app.listen(port, () => {
-      console.log(`🚀 Auto-Challenges API server running on http://localhost:${port}`);
+      console.log(`🚀 Iron30 API server running on http://localhost:${port}`);
     });
 
     // Initialize Telegram Bot & Cron

@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 export async function connectDatabase(uri?: string): Promise<typeof mongoose> {
-  const mongoUri = uri || process.env.MONGODB_URI || 'mongodb://localhost:27017/auto_challenges';
+  const mongoUri = uri || process.env.MONGODB_URI || 'mongodb://localhost:27017/iron30';
 
   try {
     const conn = await mongoose.connect(mongoUri, {

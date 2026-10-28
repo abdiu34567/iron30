@@ -20,10 +20,10 @@ export function setupBot(): Bot | null {
 
     // Handle /start command
     bot.command('start', async (ctx) => {
-      const keyboard = new InlineKeyboard().webApp('🚀 Open Auto-Challenges', webAppUrl);
+      const keyboard = new InlineKeyboard().webApp('🛡️ Open Iron30', webAppUrl);
 
       await ctx.reply(
-        `👋 Welcome to *Auto-Challenges*!\n\nJoin fitness & habit challenges with your friends, log your daily progress, and stay accountable.\n\nTap below to open the app! 👇`,
+        `👋 Welcome to *Iron30*!\n\nForge unbreakable habits & challenges with your friends, log your daily progress, and stay accountable.\n\nTap below to open the app! 👇`,
         {
           parse_mode: 'Markdown',
           reply_markup: keyboard,
