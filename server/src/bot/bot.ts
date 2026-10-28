@@ -1,4 +1,4 @@
-import { Bot, InlineKeyboard } from 'grammy';
+import { Bot, InlineKeyboard, GrammyError, HttpError } from 'grammy';
 import cron from 'node-cron';
 import { ChallengeService } from '../services/challengeService';
 
@@ -25,7 +25,6 @@ function createAppKeyboard(
     keyboard.webApp('🛡️ Open Iron30', finalUrl);
   } else {
     // In groups/supergroups/channels, Telegram Bot API ONLY allows 'url' buttons!
-    // Direct link to the Telegram Mini App (t.me/BotUsername/app or with startapp query)
     const directUrl = param
       ? `https://t.me/${botUsername}/${appShortName}?startapp=${param}`
       : `https://t.me/${botUsername}/${appShortName}`;
@@ -105,14 +104,54 @@ export function setupBot(): Bot | null {
     }
 
     bot.catch((err) => {
+      const e = err.error;
+      if (e instanceof GrammyError && e.error_code === 409) {
+        console.warn('⚠️ Polling conflict (409) during deploy rollover. Reconnecting cleanly...');
+        return;
+      }
       console.error('Telegram bot error:', err);
     });
 
-    bot.start({
-      onStart: (botInfo) => {
-        console.log(`🤖 Telegram Bot started as @${botInfo.username}`);
-      },
-    });
+    // Graceful shutdown on Render deploy rollover (SIGTERM / SIGINT)
+    const stopBot = () => {
+      console.log('🛑 Stopping Telegram bot polling for deploy rollover...');
+      try {
+        bot.stop();
+      } catch (e) {
+        // Ignore stop error
+      }
+    };
+    process.once('SIGINT', stopBot);
+    process.once('SIGTERM', stopBot);
+
+    // Start bot with automatic retry if a 409 Conflict occurs during deploy handover
+    const startPolling = async (retryCount = 0) => {
+      try {
+        await bot.start({
+          drop_pending_updates: true, // Clears stale connections and drops pending conflict backlog
+          onStart: (botInfo) => {
+            console.log(`🤖 Telegram Bot started as @${botInfo.username}`);
+          },
+        });
+      } catch (err: any) {
+        if (
+          err?.error_code === 409 ||
+          err?.description?.includes('terminated by other getUpdates') ||
+          err?.message?.includes('409')
+        ) {
+          if (retryCount < 5) {
+            console.warn(
+              `⚠️ Telegram bot polling conflict (409) during deploy handover. Retrying in 4s... (attempt ${retryCount + 1})`
+            );
+            setTimeout(() => startPolling(retryCount + 1), 4000);
+            return;
+          }
+        }
+        console.error('Fatal bot polling error:', err);
+      }
+    };
+
+    startPolling();
 
     return bot;
   } catch (error) {
