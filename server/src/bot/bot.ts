@@ -4,6 +4,36 @@ import { ChallengeService } from '../services/challengeService';
 
 let botInstance: Bot | null = null;
 
+/**
+ * Creates the appropriate keyboard for private chats vs group chats.
+ * NOTE: Telegram Bot API prohibits `web_app` buttons in group chats (error 400 BUTTON_TYPE_INVALID).
+ * In groups, a `url` button pointing to `https://t.me/BotUsername/app` must be used instead,
+ * which opens the Telegram Mini App natively in the group sheet!
+ */
+function createAppKeyboard(
+  botUsername: string,
+  webAppUrl: string,
+  isPrivate: boolean,
+  param?: string
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  const appShortName = process.env.TELEGRAM_APP_SHORT_NAME || 'app';
+
+  if (isPrivate && webAppUrl.startsWith('https://')) {
+    // In private chats with the bot, native web_app button is allowed
+    const finalUrl = param ? `${webAppUrl}?challengeId=${param}` : webAppUrl;
+    keyboard.webApp('🛡️ Open Iron30', finalUrl);
+  } else {
+    // In groups/supergroups/channels, Telegram Bot API ONLY allows 'url' buttons!
+    // Direct link to the Telegram Mini App (t.me/BotUsername/app or with startapp query)
+    const directUrl = param
+      ? `https://t.me/${botUsername}/${appShortName}?startapp=${param}`
+      : `https://t.me/${botUsername}/${appShortName}`;
+    keyboard.url('🛡️ Open Iron30', directUrl);
+  }
+  return keyboard;
+}
+
 export function setupBot(): Bot | null {
   const token = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -20,7 +50,9 @@ export function setupBot(): Bot | null {
 
     // Handle /start, /app, /hub, /challenge commands
     bot.command(['start', 'app', 'hub', 'challenge'], async (ctx) => {
-      const keyboard = new InlineKeyboard().webApp('🛡️ Open Iron30', webAppUrl);
+      const isPrivate = ctx.chat?.type === 'private';
+      const botUsername = ctx.me.username || 'Iron30Bot';
+      const keyboard = createAppKeyboard(botUsername, webAppUrl, isPrivate);
 
       await ctx.reply(
         `🛡️ *Iron30 Challenge Hub*\n\nTrack your progress, view the group leaderboard, and inspect your friends' 30-day consistency heatmaps.\n\nTap below to open the app anytime! 👇`,
@@ -43,9 +75,13 @@ export function setupBot(): Bot | null {
 
           if (activeChallenges.length > 0) {
             const firstChallenge = activeChallenges[0];
-            const keyboard = new InlineKeyboard().webApp(
-              '💪 Open Challenge & Check In',
-              `${webAppUrl}?challengeId=${firstChallenge._id}`
+            const botInfo = await bot.api.getMe();
+            // Since this message goes to a group, isPrivate is false
+            const keyboard = createAppKeyboard(
+              botInfo.username,
+              webAppUrl,
+              false,
+              firstChallenge._id.toString()
             );
 
             await bot.api.sendMessage(
