@@ -325,7 +325,12 @@ export function App() {
             onClose={() => setIsFriendModalOpen(false)}
             progress={selectedFriendProgress}
             unit={selectedChallenge.unit}
+            currentUserId={user.id}
             onNudge={handleNudge}
+            onOpenCheckIn={() => {
+              setIsFriendModalOpen(false);
+              setIsCheckInOpen(true);
+            }}
             triggerHaptic={triggerHaptic}
           />
         )}

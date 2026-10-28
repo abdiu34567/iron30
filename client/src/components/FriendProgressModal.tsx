@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { FriendProgress, DayHeatmapItem } from '../types';
-import { X, Flame, BellRing, Check, TrendingUp, Calendar, Clock, MessageSquare } from 'lucide-react';
+import { X, Flame, BellRing, Check, TrendingUp, Calendar, Clock, MessageSquare, PlusCircle, Plus } from 'lucide-react';
 
 interface FriendProgressModalProps {
   progress: FriendProgress | null;
   isOpen: boolean;
   onClose: () => void;
   unit: string;
+  currentUserId?: number;
   onNudge: (friendUserId: number, friendName: string) => Promise<void>;
+  onOpenCheckIn?: () => void;
   triggerHaptic: (type?: any) => void;
 }
 
@@ -16,7 +18,9 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
   isOpen,
   onClose,
   unit,
+  currentUserId,
   onNudge,
+  onOpenCheckIn,
   triggerHaptic,
 }) => {
   const [nudged, setNudged] = useState(false);
@@ -26,6 +30,7 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
   if (!isOpen || !progress) return null;
 
   const { participant, stats, heatmap, recentLogs } = progress;
+  const isCurrentUser = currentUserId !== undefined && participant.userId === currentUserId;
 
   const handleNudgeClick = async () => {
     try {
@@ -59,7 +64,7 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-md animate-fade-in overflow-y-auto">
       <div className="w-full max-w-lg bg-slate-900 border-t sm:border border-slate-800 rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl max-h-[92vh] flex flex-col">
-        {/* Header with Friend Info */}
+        {/* Header with User Info */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-3">
             <img
@@ -73,6 +78,11 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-1.5">
                 {participant.userName}
+                {isCurrentUser && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                    You 👤
+                  </span>
+                )}
                 {stats.isOnTrack ? (
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                     On Track 🟢
@@ -175,14 +185,28 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
             </div>
 
             {selectedDay && (
-              <div className="mt-3 p-2.5 bg-slate-900 rounded-xl border border-slate-800 text-xs flex items-center justify-between">
+              <div className="mt-3 p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs flex items-center justify-between">
                 <div>
                   <span className="font-bold text-white">Day {selectedDay.dayNumber}</span>{' '}
                   <span className="text-slate-400">({selectedDay.date})</span>
+                  <div className="font-semibold text-blue-400 mt-0.5">
+                    {selectedDay.loggedCount} / {selectedDay.targetCount} {unit} logged
+                  </div>
                 </div>
-                <div className="font-semibold text-blue-400">
-                  {selectedDay.loggedCount} / {selectedDay.targetCount} {unit} logged
-                </div>
+
+                {isCurrentUser && onOpenCheckIn && (
+                  <button
+                    onClick={() => {
+                      triggerHaptic('light');
+                      onClose();
+                      onOpenCheckIn();
+                    }}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs flex items-center gap-1 shadow-md shadow-blue-600/20 active:scale-95 transition-all"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Log</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -220,29 +244,43 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
           </div>
         </div>
 
-        {/* Footer Social Actions */}
+        {/* Footer Actions */}
         <div className="pt-3 border-t border-slate-800 shrink-0">
-          <button
-            onClick={handleNudgeClick}
-            disabled={nudging || nudged}
-            className={`w-full py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
-              nudged
-                ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
-                : 'bg-slate-800 hover:bg-slate-700 text-white active:scale-98'
-            }`}
-          >
-            {nudged ? (
-              <>
-                <Check className="w-4 h-4" />
-                <span>Nudge Sent! Bot alerted {participant.userName} ⚡</span>
-              </>
-            ) : (
-              <>
-                <BellRing className="w-4 h-4 text-orange-400" />
-                <span>Send Friendly Nudge to {participant.userName}</span>
-              </>
-            )}
-          </button>
+          {isCurrentUser ? (
+            <button
+              onClick={() => {
+                triggerHaptic('light');
+                onClose();
+                if (onOpenCheckIn) onOpenCheckIn();
+              }}
+              className="w-full py-3.5 px-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-600/30 active:scale-98 transition-all"
+            >
+              <PlusCircle className="w-5 h-5" />
+              <span>Log Today's {unit}</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleNudgeClick}
+              disabled={nudging || nudged}
+              className={`w-full py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                nudged
+                  ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
+                  : 'bg-slate-800 hover:bg-slate-700 text-white active:scale-98'
+              }`}
+            >
+              {nudged ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>Nudge Sent! Bot alerted {participant.userName} ⚡</span>
+                </>
+              ) : (
+                <>
+                  <BellRing className="w-4 h-4 text-orange-400" />
+                  <span>Send Friendly Nudge to {participant.userName}</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>
