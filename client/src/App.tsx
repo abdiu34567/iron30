@@ -233,7 +233,8 @@ export function App() {
         {/* Group Analytics Dropdown/Banner */}
         {showAnalytics && selectedChallenge && (
           <AnalyticsBanner
-            challenge={selectedChallenge}
+            challenges={challenges}
+            selectedChallenge={selectedChallenge}
             participants={leaderboard}
           />
         )}
