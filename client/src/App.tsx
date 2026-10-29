@@ -12,7 +12,7 @@ import { CreateChallengeModal } from './components/CreateChallengeModal';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 
 export function App() {
-  const { user, triggerHaptic, tg } = useTelegram();
+  const { user, triggerHaptic, tg, isTelegram } = useTelegram();
 
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
@@ -196,11 +196,13 @@ export function App() {
   // Share challenge to Telegram Group
   const handleShare = () => {
     triggerHaptic('medium');
+    const botUser = 'Iron30Bot';
+    const challengeParam = selectedChallenge?._id ? `?startapp=${selectedChallenge._id}` : '';
+    const miniAppUrl = `https://t.me/${botUser}/app${challengeParam}`;
     const text = encodeURIComponent(
-      `🔥 Join me in the "${selectedChallenge?.title}" challenge on Iron30! Let's crush this together:`
+      `🔥 Join me in "${selectedChallenge?.title}" on Iron30! Track your reps, daily streak, and consistency with our squad:`
     );
-    const url = encodeURIComponent(window.location.origin);
-    const tgShareUrl = `https://t.me/share/url?url=${url}&text=${text}`;
+    const tgShareUrl = `https://t.me/share/url?url=${encodeURIComponent(miniAppUrl)}&text=${text}`;
 
     if (tg?.openTelegramLink) {
       tg.openTelegramLink(tgShareUrl);
@@ -229,6 +231,26 @@ export function App() {
             setShowAnalytics(!showAnalytics);
           }}
         />
+
+        {/* Web browser mode info banner */}
+        {!isTelegram && (
+          <div className="bg-blue-950/40 border border-blue-500/30 rounded-2xl p-3 flex items-center justify-between text-xs animate-fade-in">
+            <div className="flex items-center gap-2">
+              <span className="text-base">🌐</span>
+              <span className="text-slate-300">
+                Web preview mode. Open via Telegram to sync your personal profile & streak!
+              </span>
+            </div>
+            <a
+              href="https://t.me/Iron30Bot/app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-[11px] shrink-0 ml-2 shadow-md shadow-blue-600/30 active:scale-95 transition-all"
+            >
+              Open in TG
+            </a>
+          </div>
+        )}
 
         {/* Group Analytics Dropdown/Banner */}
         {showAnalytics && selectedChallenge && (
