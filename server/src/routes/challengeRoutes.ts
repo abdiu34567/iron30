@@ -78,9 +78,17 @@ router.post('/', async (req: Request, res: Response) => {
 router.patch('/:id', async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
-    const { startDate, title, description, dailyGoal, durationDays } = req.body;
+    const { userId, startDate, title, description, dailyGoal, durationDays } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'userId is required to edit challenge',
+      });
+    }
 
     const challenge = await ChallengeService.updateChallenge(id, {
+      userId: Number(userId),
       startDate: startDate ? new Date(startDate) : undefined,
       title,
       description,
@@ -94,7 +102,8 @@ router.patch('/:id', async (req: Request, res: Response) => {
 
     res.json({ success: true, data: challenge });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    const status = error.message?.includes('creator') ? 403 : 500;
+    res.status(status).json({ success: false, error: error.message });
   }
 });
 

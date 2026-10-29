@@ -10,6 +10,7 @@ import { CheckInModal } from './components/CheckInModal';
 import { FriendProgressModal } from './components/FriendProgressModal';
 import { CreateChallengeModal } from './components/CreateChallengeModal';
 import { EditStartDateModal } from './components/EditStartDateModal';
+import { ShareModal } from './components/ShareModal';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 
 export function App() {
@@ -30,6 +31,7 @@ export function App() {
   const [isCheckInOpen, setIsCheckInOpen] = useState<boolean>(false);
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
   const [isEditDateOpen, setIsEditDateOpen] = useState<boolean>(false);
+  const [isShareOpen, setIsShareOpen] = useState<boolean>(false);
   const [selectedFriendProgress, setSelectedFriendProgress] = useState<FriendProgress | null>(null);
   const [isFriendModalOpen, setIsFriendModalOpen] = useState<boolean>(false);
   const [loadingFriend, setLoadingFriend] = useState<boolean>(false);
@@ -164,7 +166,7 @@ export function App() {
     const res = await fetch(`/api/challenges/${challengeId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ startDate: newStartDate }),
+      body: JSON.stringify({ startDate: newStartDate, userId: user.id }),
     });
 
     const json = await res.json();
@@ -212,22 +214,10 @@ export function App() {
     );
   };
 
-  // Share challenge to Telegram Group
+  // Share challenge to Telegram Group or Copy Link
   const handleShare = () => {
-    triggerHaptic('medium');
-    const botUser = 'Iron30Bot';
-    const challengeParam = selectedChallenge?._id ? `?startapp=${selectedChallenge._id}` : '';
-    const miniAppUrl = `https://t.me/${botUser}/app${challengeParam}`;
-    const text = encodeURIComponent(
-      `🔥 Join me in "${selectedChallenge?.title}" on Iron30! Track your reps, daily streak, and consistency with our squad:`
-    );
-    const tgShareUrl = `https://t.me/share/url?url=${encodeURIComponent(miniAppUrl)}&text=${text}`;
-
-    if (tg?.openTelegramLink) {
-      tg.openTelegramLink(tgShareUrl);
-    } else {
-      window.open(tgShareUrl, '_blank');
-    }
+    triggerHaptic('light');
+    setIsShareOpen(true);
   };
 
   // Current user's progress record & join status
@@ -301,6 +291,7 @@ export function App() {
             currentUserProgress={currentUserProgress}
             isJoined={isJoined}
             joining={joining}
+            currentUserId={user.id}
             onJoin={handleJoinChallenge}
             onOpenCheckIn={() => {
               triggerHaptic('light');
@@ -396,6 +387,15 @@ export function App() {
             isOpen={isEditDateOpen}
             onClose={() => setIsEditDateOpen(false)}
             onUpdateStartDate={handleUpdateStartDate}
+            triggerHaptic={triggerHaptic}
+          />
+        )}
+
+        {selectedChallenge && (
+          <ShareModal
+            challenge={selectedChallenge}
+            isOpen={isShareOpen}
+            onClose={() => setIsShareOpen(false)}
             triggerHaptic={triggerHaptic}
           />
         )}

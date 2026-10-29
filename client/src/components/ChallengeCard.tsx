@@ -7,6 +7,7 @@ interface ChallengeCardProps {
   currentUserProgress?: LeaderboardUser;
   isJoined: boolean;
   joining: boolean;
+  currentUserId?: number;
   onJoin: () => void;
   onOpenCheckIn: () => void;
   onShare: () => void;
@@ -18,6 +19,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   currentUserProgress,
   isJoined,
   joining,
+  currentUserId,
   onJoin,
   onOpenCheckIn,
   onShare,
@@ -38,6 +40,12 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   );
   const daysLeft = Math.max(0, challenge.durationDays - dayNumber);
 
+  // Only allow challenge author (or creator of seeded challenge) to edit dates
+  const isAuthor =
+    currentUserId !== undefined &&
+    (challenge.creatorTelegramId === 0 || challenge.creatorTelegramId === currentUserId);
+  const canEditDate = Boolean(isAuthor && onOpenEditDate);
+
   return (
     <div className="relative overflow-hidden bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-5 shadow-2xl">
       {/* Glow accent */}
@@ -46,11 +54,11 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
       {/* Top badges */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          {onOpenEditDate ? (
+          {canEditDate ? (
             <button
               onClick={onOpenEditDate}
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30 hover:bg-blue-500/25 active:scale-95 transition-all group"
-              title="Click to edit starting date"
+              title="Click to edit starting date (Author)"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
               <span>Day {dayNumber} of {challenge.durationDays}</span>
@@ -69,12 +77,12 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5">
-          {onOpenEditDate && (
+          {canEditDate && (
             <button
               onClick={onOpenEditDate}
               className="p-1.5 text-slate-400 hover:text-white bg-slate-800/60 rounded-xl transition-colors"
               aria-label="Edit Start Date"
-              title="Edit start date"
+              title="Edit start date (Author only)"
             >
               <Calendar className="w-4 h-4" />
             </button>
@@ -82,7 +90,8 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
           <button
             onClick={onShare}
             className="p-1.5 text-slate-400 hover:text-white bg-slate-800/60 rounded-xl transition-colors"
-            aria-label="Share to Group"
+            aria-label="Share Challenge"
+            title="Share to friends"
           >
             <Share2 className="w-4 h-4" />
           </button>

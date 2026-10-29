@@ -39,6 +39,7 @@ export interface AddCheckInInput {
 }
 
 export interface UpdateChallengeInput {
+  userId: number;
   startDate?: Date;
   title?: string;
   description?: string;
@@ -270,6 +271,16 @@ export class ChallengeService {
   ): Promise<IChallenge | null> {
     const challenge = await Challenge.findById(id);
     if (!challenge) return null;
+
+    // Verify creator authorization: only the author can edit challenge settings
+    if (challenge.creatorTelegramId !== 0 && challenge.creatorTelegramId !== updates.userId) {
+      throw new Error('Only the challenge creator can edit challenge settings');
+    }
+
+    // If it was seeded as 0, claim it with current author
+    if (challenge.creatorTelegramId === 0 && updates.userId) {
+      challenge.creatorTelegramId = updates.userId;
+    }
 
     if (updates.title) challenge.title = updates.title.trim();
     if (updates.description) challenge.description = updates.description.trim();
