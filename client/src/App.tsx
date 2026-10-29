@@ -151,7 +151,7 @@ export function App() {
   };
 
   // Submit check-in
-  const handleCheckIn = async (count: number, note?: string) => {
+  const handleCheckIn = async (count: number, note?: string, date?: string) => {
     if (!selectedChallenge) return;
 
     const res = await fetch(`/api/challenges/${selectedChallenge._id}/checkin`, {
@@ -164,6 +164,7 @@ export function App() {
         photoUrl: user.photo_url,
         count,
         note,
+        date,
       }),
     });
 
@@ -171,6 +172,19 @@ export function App() {
     if (json.success) {
       setJoinedChallengeIds((prev) => new Set(prev).add(selectedChallenge._id));
       await Promise.all([fetchChallenges(), fetchLeaderboard(selectedChallenge._id)]);
+      
+      // If the progress modal is open for current user, refresh it immediately in-place
+      if (isFriendModalOpen && selectedFriendProgress?.participant.userId === user.id) {
+        try {
+          const progRes = await fetch(`/api/challenges/${selectedChallenge._id}/participants/${user.id}/progress`);
+          if (progRes.ok) {
+            const progData = await progRes.json();
+            setSelectedFriendProgress(progData);
+          }
+        } catch (e) {
+          console.error('Failed to refresh friend progress in-place:', e);
+        }
+      }
     } else {
       throw new Error(json.error || 'Failed to check in');
     }
@@ -379,6 +393,7 @@ export function App() {
             unit={selectedChallenge.unit}
             currentUserId={user.id}
             onNudge={handleNudge}
+            onCheckIn={handleCheckIn}
             onOpenCheckIn={() => {
               setIsFriendModalOpen(false);
               setIsCheckInOpen(true);

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { FriendProgress, DayHeatmapItem } from '../types';
 import { UserAvatar } from './UserAvatar';
-import { X, Flame, BellRing, Check, TrendingUp, Calendar, Clock, MessageSquare, PlusCircle, Plus } from 'lucide-react';
+import { X, Flame, BellRing, Check, Calendar, Clock, MessageSquare, PlusCircle, Plus } from 'lucide-react';
 
 interface FriendProgressModalProps {
   progress: FriendProgress | null;
@@ -11,6 +11,7 @@ interface FriendProgressModalProps {
   currentUserId?: number;
   onNudge: (friendUserId: number, friendName: string) => Promise<void>;
   onOpenCheckIn?: () => void;
+  onCheckIn?: (count: number, note?: string, date?: string) => Promise<void>;
   triggerHaptic: (type?: any) => void;
 }
 
@@ -22,16 +23,62 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
   currentUserId,
   onNudge,
   onOpenCheckIn,
+  onCheckIn,
   triggerHaptic,
 }) => {
   const [nudged, setNudged] = useState(false);
   const [nudging, setNudging] = useState(false);
   const [selectedDay, setSelectedDay] = useState<DayHeatmapItem | null>(null);
 
+  // Quick Log state for direct 1-tap logging
+  const [quickLogDay, setQuickLogDay] = useState<DayHeatmapItem | null>(null);
+  const [quickCount, setQuickCount] = useState<string>('');
+  const [submitting, setSubmitting] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
   if (!isOpen || !progress) return null;
 
   const { participant, stats, heatmap, recentLogs } = progress;
   const isCurrentUser = currentUserId !== undefined && participant.userId === currentUserId;
+
+  const handleDayClick = (item: DayHeatmapItem) => {
+    triggerHaptic('light');
+    setSelectedDay(item);
+
+    if (!isCurrentUser) {
+      return;
+    }
+
+    if (item.status === 'future') {
+      setToastMessage(`Day ${item.dayNumber} begins on ${item.date}!`);
+      setTimeout(() => setToastMessage(null), 2500);
+      return;
+    }
+
+    // Direct, frictionless quick-log for today or past days
+    setQuickLogDay(item);
+    setQuickCount(String(item.targetCount || 100));
+  };
+
+  const handleQuickSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickLogDay || !onCheckIn) return;
+    const num = parseInt(quickCount, 10);
+    if (!num || num <= 0) return;
+
+    try {
+      setSubmitting(true);
+      triggerHaptic('medium');
+      await onCheckIn(num, undefined, quickLogDay.date);
+      triggerHaptic('success');
+      setQuickLogDay(null);
+    } catch (err) {
+      console.error(err);
+      triggerHaptic('error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleNudgeClick = async () => {
     try {
@@ -170,16 +217,23 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
               </div>
             </div>
 
-            {/* Grid of days (e.g. 5 columns x 6 rows for 30 days) */}
+            {toastMessage && (
+              <div className="mb-2.5 p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-center text-xs text-amber-300 font-semibold animate-fade-in">
+                {toastMessage}
+              </div>
+            )}
+
+            {/* Grid of days */}
             <div className="grid grid-cols-6 gap-2">
               {heatmap.map((item) => (
                 <button
                   key={item.dayNumber}
-                  onClick={() => setSelectedDay(item)}
+                  onClick={() => handleDayClick(item)}
                   type="button"
+                  title={isCurrentUser ? `Tap to log Day ${item.dayNumber}` : `Day ${item.dayNumber}`}
                   className={`h-9 rounded-xl flex flex-col items-center justify-center text-[11px] font-black transition-all active:scale-90 ${getHeatmapColor(
                     item
-                  )}`}
+                  )} ${selectedDay?.dayNumber === item.dayNumber ? 'ring-2 ring-white/80' : ''}`}
                 >
                   <span>D{item.dayNumber}</span>
                   <span className="text-[9px] font-semibold opacity-90">
@@ -199,17 +253,17 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
                   </div>
                 </div>
 
-                {isCurrentUser && onOpenCheckIn && (
+                {isCurrentUser && selectedDay.status !== 'future' && (
                   <button
                     onClick={() => {
                       triggerHaptic('light');
-                      onClose();
-                      onOpenCheckIn();
+                      setQuickLogDay(selectedDay);
+                      setQuickCount(String(selectedDay.targetCount || 100));
                     }}
                     className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs flex items-center gap-1 shadow-md shadow-blue-600/20 active:scale-95 transition-all"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Log</span>
+                    <span>{selectedDay.loggedCount > 0 ? 'Add More' : 'Log'}</span>
                   </button>
                 )}
               </div>
@@ -255,8 +309,13 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
             <button
               onClick={() => {
                 triggerHaptic('light');
-                onClose();
-                if (onOpenCheckIn) onOpenCheckIn();
+                const todayItem = heatmap.find((h) => h.status === 'today') || heatmap[0];
+                if (todayItem) {
+                  setQuickLogDay(todayItem);
+                  setQuickCount(String(todayItem.targetCount || 100));
+                } else if (onOpenCheckIn) {
+                  onOpenCheckIn();
+                }
               }}
               className="w-full py-3.5 px-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-600/30 active:scale-98 transition-all"
             >
@@ -288,6 +347,104 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
           )}
         </div>
       </div>
+
+      {/* Instant Quick-Log Overlay on Day Click */}
+      {quickLogDay && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setQuickLogDay(null);
+          }}
+        >
+          <div className="w-full max-w-sm bg-slate-900 border border-slate-700/80 rounded-3xl p-5 shadow-2xl animate-scale-up">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div>
+                <h4 className="text-base font-bold text-white flex items-center gap-1.5">
+                  <Flame className="w-4 h-4 text-orange-400" />
+                  <span>Log Day {quickLogDay.dayNumber}</span>
+                </h4>
+                <p className="text-xs text-slate-400">
+                  {quickLogDay.status === 'today' ? 'Today' : quickLogDay.date} · Target: {quickLogDay.targetCount} {unit}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setQuickLogDay(null)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-xl bg-slate-800/60 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleQuickSubmit} className="mt-4 space-y-4">
+              <div className="bg-slate-950/90 border border-slate-800 rounded-2xl p-4 flex flex-col items-center">
+                <label className="text-xs font-semibold text-slate-400 mb-2">
+                  Enter {unit} count
+                </label>
+                <div className="w-full max-w-[200px]">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    min="1"
+                    max="10000"
+                    value={quickCount}
+                    onChange={(e) => setQuickCount(e.target.value)}
+                    placeholder={String(quickLogDay.targetCount || 100)}
+                    autoFocus
+                    className="w-full text-center text-4xl font-black text-white bg-slate-900 border border-slate-700/80 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-2xl py-2.5 px-3 outline-none transition-all shadow-inner"
+                  />
+                </div>
+                <span className="text-xs text-blue-400 font-bold mt-1.5">
+                  {unit} completed
+                </span>
+
+                {/* Quick 1-tap preset chips */}
+                <div className="flex items-center gap-2 mt-3.5 flex-wrap justify-center w-full">
+                  {[
+                    Math.round(quickLogDay.targetCount * 0.5),
+                    quickLogDay.targetCount,
+                    Math.round(quickLogDay.targetCount * 1.5),
+                  ]
+                    .filter((v, i, a) => v > 0 && a.indexOf(v) === i)
+                    .map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic('light');
+                          setQuickCount(String(preset));
+                        }}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all active:scale-95 ${
+                          quickCount === String(preset)
+                            ? 'bg-blue-600 text-white border-blue-500 shadow-md shadow-blue-500/30'
+                            : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        {preset}
+                      </button>
+                    ))}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting || !parseInt(quickCount, 10)}
+                className="w-full py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm rounded-2xl shadow-xl shadow-blue-600/30 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {submitting ? (
+                  <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>Log {parseInt(quickCount, 10) || quickLogDay.targetCount} {unit}</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

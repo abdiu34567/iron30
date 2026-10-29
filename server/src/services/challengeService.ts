@@ -36,6 +36,7 @@ export interface AddCheckInInput {
   photoUrl?: string;
   count: number;
   note?: string;
+  date?: string;
 }
 
 export interface UpdateChallengeInput {
@@ -258,6 +259,7 @@ export class ChallengeService {
     }
 
     const todayStr = ProgressService.formatDate(new Date());
+    const logDate = input.date || todayStr;
 
     // Create log record
     const log = await CheckInLog.create({
@@ -265,18 +267,20 @@ export class ChallengeService {
       participantId: participant._id,
       userId: input.userId,
       count: input.count,
-      date: todayStr,
+      date: logDate,
       note: input.note,
     });
 
     // Calculate streaks
-    const { currentStreak, bestStreak } = ProgressService.updateStreak(participant, todayStr);
+    if (logDate === todayStr) {
+      const { currentStreak, bestStreak } = ProgressService.updateStreak(participant, todayStr);
+      participant.currentStreak = currentStreak;
+      participant.bestStreak = bestStreak;
+      participant.lastCheckInDate = todayStr;
+    }
 
     // Update participant
     participant.totalProgress += input.count;
-    participant.currentStreak = currentStreak;
-    participant.bestStreak = bestStreak;
-    participant.lastCheckInDate = todayStr;
 
     // Check if goal reached
     const challenge = await Challenge.findById(input.challengeId);
