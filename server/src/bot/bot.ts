@@ -51,15 +51,32 @@ export function setupBot(): Bot | null {
     bot.command(['start', 'app', 'hub', 'challenge'], async (ctx) => {
       const isPrivate = ctx.chat?.type === 'private';
       const botUsername = ctx.me.username || 'Iron30Bot';
-      const keyboard = createAppKeyboard(botUsername, webAppUrl, isPrivate);
+      const startParam = ctx.match?.trim();
+      const keyboard = createAppKeyboard(botUsername, webAppUrl, isPrivate, startParam);
 
-      await ctx.reply(
-        `🛡️ *Iron30 Challenge Hub*\n\nTrack your progress, view the group leaderboard, and inspect your friends' 30-day consistency heatmaps.\n\nTap below to open the app anytime! 👇`,
-        {
-          parse_mode: 'Markdown',
-          reply_markup: keyboard,
+      let msg = `🛡️ *Iron30 Challenge Hub*\n\nTrack your progress, view the group leaderboard, and inspect your friends' 30-day consistency heatmaps.\n\nTap below to open the app anytime! 👇`;
+
+      if (startParam) {
+        try {
+          const challenge = await ChallengeService.getChallengeById(startParam);
+          if (challenge) {
+            msg =
+              `🔥 *You've been invited to join "${challenge.title}"!*\n\n` +
+              `🎯 *Squad Target*: ${challenge.targetCount.toLocaleString()} ${challenge.unit}\n` +
+              `📊 *Daily Goal*: ${challenge.dailyGoal.toLocaleString()} ${challenge.unit} / day\n` +
+              `📅 *Duration*: ${challenge.durationDays} Days\n` +
+              `👥 *Current Squad*: ${challenge.participantCount} members\n\n` +
+              `Tap below to accept the challenge and start logging your progress! 👇`;
+          }
+        } catch (e) {
+          console.warn('Failed to fetch challenge for /start param:', e);
         }
-      );
+      }
+
+      await ctx.reply(msg, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard,
+      });
     });
 
     // Schedule 1-time daily group message

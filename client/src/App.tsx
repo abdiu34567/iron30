@@ -14,7 +14,7 @@ import { ShareModal } from './components/ShareModal';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 
 export function App() {
-  const { user, triggerHaptic, tg, isTelegram } = useTelegram();
+  const { user, triggerHaptic, tg, isTelegram, startParam } = useTelegram();
 
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
@@ -44,6 +44,11 @@ export function App() {
       if (json.success && json.data?.length > 0) {
         setChallenges(json.data);
         setSelectedChallenge((prev) => {
+          // If a deep-linked startParam matches, always prioritize it
+          if (startParam) {
+            const startMatch = json.data.find((c: Challenge) => c._id === startParam);
+            if (startMatch) return startMatch;
+          }
           if (!prev) return json.data[0];
           // Keep current selection if still valid, otherwise first
           const found = json.data.find((c: Challenge) => c._id === prev._id);
@@ -53,7 +58,7 @@ export function App() {
     } catch (err) {
       console.error('Failed to fetch challenges:', err);
     }
-  }, []);
+  }, [startParam]);
 
   // Fetch leaderboard for active challenge
   const fetchLeaderboard = useCallback(async (challengeId: string) => {
@@ -84,6 +89,16 @@ export function App() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Auto-switch to challenge if startParam is detected or updates
+  useEffect(() => {
+    if (startParam && challenges.length > 0) {
+      const match = challenges.find((c) => c._id === startParam);
+      if (match && selectedChallenge?._id !== match._id) {
+        setSelectedChallenge(match);
+      }
+    }
+  }, [startParam, challenges, selectedChallenge?._id]);
 
   // When selected challenge changes, load its leaderboard
   useEffect(() => {

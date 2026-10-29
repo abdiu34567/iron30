@@ -104,6 +104,42 @@ function extractTelegramUser(): { user: TelegramUser | null; isTelegram: boolean
   return { user: null, isTelegram: false };
 }
 
+// Robust extractor for start_param (deep-linked challenge ID)
+function extractStartParam(): string | null {
+  if (typeof window === 'undefined') return null;
+
+  // 1. Direct from Telegram WebApp
+  const tg = window.Telegram?.WebApp;
+  if (tg?.initDataUnsafe?.start_param) {
+    return tg.initDataUnsafe.start_param;
+  }
+
+  // 2. Query parameters
+  const searchParams = new URLSearchParams(window.location.search);
+  const qParam =
+    searchParams.get('tgWebAppStartParam') ||
+    searchParams.get('startapp') ||
+    searchParams.get('challengeId') ||
+    searchParams.get('start');
+  if (qParam) return qParam;
+
+  // 3. Hash parameters
+  if (window.location.hash) {
+    const hash = window.location.hash.startsWith('#')
+      ? window.location.hash.slice(1)
+      : window.location.hash;
+    const hashParams = new URLSearchParams(hash);
+    const hParam =
+      hashParams.get('tgWebAppStartParam') ||
+      hashParams.get('startapp') ||
+      hashParams.get('challengeId') ||
+      hashParams.get('start');
+    if (hParam) return hParam;
+  }
+
+  return null;
+}
+
 export function useTelegram() {
   const [user, setUser] = useState<TelegramUser>(() => {
     const initial = extractTelegramUser();
@@ -113,6 +149,10 @@ export function useTelegram() {
 
   const [isTelegram, setIsTelegram] = useState<boolean>(() => {
     return extractTelegramUser().isTelegram;
+  });
+
+  const [startParam, setStartParam] = useState<string | null>(() => {
+    return extractStartParam();
   });
 
   useEffect(() => {
@@ -128,7 +168,7 @@ export function useTelegram() {
     let attempts = 0;
     const maxAttempts = 15; // 15 * 100ms = 1.5 seconds
 
-    const checkUser = () => {
+    const checkState = () => {
       const extracted = extractTelegramUser();
       if (extracted.user) {
         setUser(extracted.user);
@@ -136,18 +176,23 @@ export function useTelegram() {
         try {
           sessionStorage.setItem('iron30_tg_user', JSON.stringify(extracted.user));
         } catch (e) {}
-        return true;
       }
-      return false;
+
+      const param = extractStartParam();
+      if (param) {
+        setStartParam(param);
+      }
+
+      return Boolean(extracted.user);
     };
 
-    if (checkUser()) {
+    if (checkState()) {
       return;
     }
 
     const interval = setInterval(() => {
       attempts++;
-      if (checkUser() || attempts >= maxAttempts) {
+      if (checkState() || attempts >= maxAttempts) {
         clearInterval(interval);
       }
     }, 100);
@@ -174,6 +219,7 @@ export function useTelegram() {
     tg: typeof window !== 'undefined' ? window.Telegram?.WebApp : null,
     user,
     isTelegram,
+    startParam,
     triggerHaptic,
     closeApp: () => window.Telegram?.WebApp?.close(),
   };
