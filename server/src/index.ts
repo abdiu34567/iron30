@@ -33,6 +33,19 @@ app.use('/api/health', healthRoutes);
 app.use('/api/challenges', challengeRoutes);
 app.use('/api/challenges', progressRoutes);
 
+// Serve OG banner image
+const bannerPath = path.resolve(__dirname, '../assets/og-banner.jpg');
+const clientBannerPath = path.resolve(__dirname, '../../client/public/og-banner.jpg');
+app.get('/og-banner.jpg', (req: express.Request, res: express.Response) => {
+  if (fs.existsSync(bannerPath)) {
+    return res.sendFile(bannerPath);
+  }
+  if (fs.existsSync(clientBannerPath)) {
+    return res.sendFile(clientBannerPath);
+  }
+  res.status(404).send('Banner not found');
+});
+
 // Challenge OpenGraph Link Preview & Redirect route (/c/:id)
 app.get('/c/:id', async (req: express.Request, res: express.Response) => {
   try {
@@ -47,9 +60,14 @@ app.get('/c/:id', async (req: express.Request, res: express.Response) => {
       return res.redirect(`https://t.me/${botUsername}/${appShortName}`);
     }
 
-    const title = `🔥 ${challenge.title} — Iron30 Challenge`;
-    const description = `🎯 Target: ${challenge.targetCount.toLocaleString()} ${challenge.unit} (${challenge.dailyGoal.toLocaleString()} / day) · ${challenge.durationDays} Days Squad Challenge. Join the squad on Telegram!`;
-    const canonicalUrl = `${req.protocol}://${req.get('host')}/c/${id}`;
+    const host = req.get('host') || 'iron30.onrender.com';
+    const protocol = host.includes('localhost') ? 'http' : 'https';
+    const canonicalUrl = `${protocol}://${host}/c/${id}`;
+    const imageUrl = `${protocol}://${host}/og-banner.jpg`;
+
+    const participantCount = challenge.participantCount || 2;
+    const title = `🔥 ${challenge.title} — Iron30 Squad Challenge`;
+    const description = `🎯 Target: ${challenge.targetCount.toLocaleString()} ${challenge.unit} (${challenge.dailyGoal.toLocaleString()} / day) · ${challenge.durationDays} Days · ${participantCount} Squad Members. Accept & compete on Telegram!`;
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(`<!DOCTYPE html>
@@ -59,22 +77,31 @@ app.get('/c/:id', async (req: express.Request, res: express.Response) => {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${escapeHtml(title)}</title>
   
-  <!-- Open Graph / Telegram Link Preview -->
+  <!-- Open Graph / Telegram / WhatsApp / Discord Link Preview -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
+  <meta property="og:site_name" content="Iron30 Challenge" />
   <meta property="og:title" content="${escapeHtml(title)}" />
   <meta property="og:description" content="${escapeHtml(description)}" />
-  <meta property="og:site_name" content="Iron30 Mini App" />
+  <meta property="og:image" content="${escapeHtml(imageUrl)}" />
+  <meta property="og:image:secure_url" content="${escapeHtml(imageUrl)}" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="675" />
   
   <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@Iron30Bot" />
+  <meta name="twitter:url" content="${escapeHtml(canonicalUrl)}" />
   <meta name="twitter:title" content="${escapeHtml(title)}" />
   <meta name="twitter:description" content="${escapeHtml(description)}" />
+  <meta name="twitter:image" content="${escapeHtml(imageUrl)}" />
 
-  <!-- Instant redirect to Telegram Mini App -->
-  <meta http-equiv="refresh" content="0; url=${escapeHtml(tgAppUrl)}" />
+  <!-- JavaScript redirect for human browsers (does not run on preview bot crawlers) -->
   <script>
-    window.location.replace("${escapeHtml(tgAppUrl)}");
+    if (!/bot|crawler|spider|facebookexternalhit|telegrambot|whatsapp|twitterbot|discordbot/i.test(navigator.userAgent)) {
+      window.location.replace("${escapeHtml(tgAppUrl)}");
+    }
   </script>
   <style>
     body {
@@ -95,10 +122,18 @@ app.get('/c/:id', async (req: express.Request, res: express.Response) => {
       background: #1e293b;
       border: 1px solid #334155;
       border-radius: 24px;
-      padding: 32px 24px;
-      max-width: 420px;
+      padding: 28px 24px;
+      max-width: 440px;
       width: 100%;
       box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    .banner-img {
+      width: 100%;
+      border-radius: 16px;
+      margin-bottom: 20px;
+      border: 1px solid #334155;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
     }
     .badge {
       display: inline-block;
@@ -151,13 +186,14 @@ app.get('/c/:id', async (req: express.Request, res: express.Response) => {
 </head>
 <body>
   <div class="card">
+    <img src="${escapeHtml(imageUrl)}" alt="Iron30 Challenge" class="banner-img" />
     <div class="badge">Iron30 Squad Challenge</div>
     <h1>${escapeHtml(challenge.title)}</h1>
     <p>${escapeHtml(description)}</p>
     <a href="${escapeHtml(tgAppUrl)}" class="btn">
       🛡️ Open in Telegram
     </a>
-    <div class="note">Redirecting to Telegram Mini App...</div>
+    <div class="note">Opening Telegram Mini App...</div>
   </div>
 </body>
 </html>`);

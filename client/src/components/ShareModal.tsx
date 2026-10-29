@@ -26,7 +26,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     typeof window !== 'undefined' && window.location.origin.startsWith('http')
       ? window.location.origin
       : 'https://iron30.onrender.com';
-  const webPreviewLink = `${origin}/c/${challenge._id}`;
+  const webPreviewLink = `${origin}/c/${challenge._id}?v=2`;
 
   const shareLeadText = `🔥 Join my "${challenge.title}" squad on Iron30!\n🎯 Target: ${challenge.targetCount.toLocaleString()} ${challenge.unit} (${challenge.dailyGoal.toLocaleString()} / day) · ${challenge.durationDays} Days\n\n👇 Tap below to accept & track with our squad:`;
 
