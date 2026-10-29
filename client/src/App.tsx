@@ -9,6 +9,7 @@ import { Leaderboard } from './components/Leaderboard';
 import { CheckInModal } from './components/CheckInModal';
 import { FriendProgressModal } from './components/FriendProgressModal';
 import { CreateChallengeModal } from './components/CreateChallengeModal';
+import { EditStartDateModal } from './components/EditStartDateModal';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 
 export function App() {
@@ -28,6 +29,7 @@ export function App() {
   // Modals state
   const [isCheckInOpen, setIsCheckInOpen] = useState<boolean>(false);
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
+  const [isEditDateOpen, setIsEditDateOpen] = useState<boolean>(false);
   const [selectedFriendProgress, setSelectedFriendProgress] = useState<FriendProgress | null>(null);
   const [isFriendModalOpen, setIsFriendModalOpen] = useState<boolean>(false);
   const [loadingFriend, setLoadingFriend] = useState<boolean>(false);
@@ -154,6 +156,23 @@ export function App() {
       await Promise.all([fetchChallenges(), fetchLeaderboard(selectedChallenge._id)]);
     } else {
       throw new Error(json.error || 'Failed to check in');
+    }
+  };
+
+  // Update challenge start date
+  const handleUpdateStartDate = async (challengeId: string, newStartDate: string) => {
+    const res = await fetch(`/api/challenges/${challengeId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ startDate: newStartDate }),
+    });
+
+    const json = await res.json();
+    if (json.success && json.data) {
+      setSelectedChallenge(json.data);
+      await Promise.all([fetchChallenges(), fetchLeaderboard(challengeId)]);
+    } else {
+      throw new Error(json.error || 'Failed to update starting date');
     }
   };
 
@@ -288,6 +307,10 @@ export function App() {
               setIsCheckInOpen(true);
             }}
             onShare={handleShare}
+            onOpenEditDate={() => {
+              triggerHaptic('light');
+              setIsEditDateOpen(true);
+            }}
           />
         ) : (
           <div className="text-center py-12 bg-slate-900/50 rounded-3xl border border-slate-800 p-6">
@@ -366,6 +389,16 @@ export function App() {
           }}
           triggerHaptic={triggerHaptic}
         />
+
+        {selectedChallenge && (
+          <EditStartDateModal
+            challenge={selectedChallenge}
+            isOpen={isEditDateOpen}
+            onClose={() => setIsEditDateOpen(false)}
+            onUpdateStartDate={handleUpdateStartDate}
+            triggerHaptic={triggerHaptic}
+          />
+        )}
       </div>
     </div>
   );

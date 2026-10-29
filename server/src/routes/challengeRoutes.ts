@@ -38,6 +38,7 @@ router.post('/', async (req: Request, res: Response) => {
       unit,
       dailyGoal,
       durationDays,
+      startDate,
       creatorTelegramId,
       creatorName,
       creatorUsername,
@@ -59,6 +60,7 @@ router.post('/', async (req: Request, res: Response) => {
       unit,
       dailyGoal: dailyGoal ? Number(dailyGoal) : undefined,
       durationDays: durationDays ? Number(durationDays) : 30,
+      startDate: startDate ? new Date(startDate) : undefined,
       creatorTelegramId: Number(creatorTelegramId),
       creatorName,
       creatorUsername,
@@ -67,6 +69,30 @@ router.post('/', async (req: Request, res: Response) => {
     });
 
     res.status(201).json({ success: true, data: challenge });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PATCH update challenge (e.g., startDate, title, description)
+router.patch('/:id', async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id as string;
+    const { startDate, title, description, dailyGoal, durationDays } = req.body;
+
+    const challenge = await ChallengeService.updateChallenge(id, {
+      startDate: startDate ? new Date(startDate) : undefined,
+      title,
+      description,
+      dailyGoal: dailyGoal ? Number(dailyGoal) : undefined,
+      durationDays: durationDays ? Number(durationDays) : undefined,
+    });
+
+    if (!challenge) {
+      return res.status(404).json({ success: false, error: 'Challenge not found' });
+    }
+
+    res.json({ success: true, data: challenge });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }

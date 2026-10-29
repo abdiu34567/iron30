@@ -22,6 +22,9 @@ export const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
   const [targetCount, setTargetCount] = useState<number>(3000);
   const [unit, setUnit] = useState('pushups');
   const [durationDays, setDurationDays] = useState<number>(30);
+  const [startDate, setStartDate] = useState<string>(
+    () => new Date().toISOString().split('T')[0]
+  );
   const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
@@ -46,6 +49,7 @@ export const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
           unit: unit.trim().toLowerCase(),
           durationDays,
           dailyGoal,
+          startDate: startDate ? new Date(startDate).toISOString() : undefined,
           creatorTelegramId: user.id,
           creatorName: user.first_name,
           creatorUsername: user.username,
@@ -158,6 +162,19 @@ export const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
                 <option value={100}>100 Days</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="text-[11px] font-semibold text-slate-400 block mb-1">
+              Start Date
+            </label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-white text-xs focus:outline-none focus:border-blue-500 font-medium"
+              required
+            />
           </div>
 
           <div className="p-3 bg-blue-950/30 rounded-xl border border-blue-900/40 text-xs text-blue-300 flex items-center justify-between">

@@ -10,6 +10,7 @@ interface ChallengeCardProps {
   onJoin: () => void;
   onOpenCheckIn: () => void;
   onShare: () => void;
+  onOpenEditDate?: () => void;
 }
 
 export const ChallengeCard: React.FC<ChallengeCardProps> = ({
@@ -20,6 +21,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   onJoin,
   onOpenCheckIn,
   onShare,
+  onOpenEditDate,
 }) => {
   const userProgress = currentUserProgress?.totalProgress || 0;
   const userPercentage = Math.min(
@@ -44,23 +46,47 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
       {/* Top badges */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-            Day {dayNumber} of {challenge.durationDays}
-          </span>
+          {onOpenEditDate ? (
+            <button
+              onClick={onOpenEditDate}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30 hover:bg-blue-500/25 active:scale-95 transition-all group"
+              title="Click to edit starting date"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+              <span>Day {dayNumber} of {challenge.durationDays}</span>
+              <Calendar className="w-3 h-3 text-blue-400/70 group-hover:text-blue-300 ml-0.5" />
+            </button>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+              Day {dayNumber} of {challenge.durationDays}
+            </span>
+          )}
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-800/80 text-slate-300">
             <Users className="w-3.5 h-3.5 text-slate-400" />
             {challenge.participantCount || 0}
           </span>
         </div>
 
-        <button
-          onClick={onShare}
-          className="p-1.5 text-slate-400 hover:text-white bg-slate-800/60 rounded-xl transition-colors"
-          aria-label="Share to Group"
-        >
-          <Share2 className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1.5">
+          {onOpenEditDate && (
+            <button
+              onClick={onOpenEditDate}
+              className="p-1.5 text-slate-400 hover:text-white bg-slate-800/60 rounded-xl transition-colors"
+              aria-label="Edit Start Date"
+              title="Edit start date"
+            >
+              <Calendar className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            onClick={onShare}
+            className="p-1.5 text-slate-400 hover:text-white bg-slate-800/60 rounded-xl transition-colors"
+            aria-label="Share to Group"
+          >
+            <Share2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Title & description */}

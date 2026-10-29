@@ -38,6 +38,14 @@ export interface AddCheckInInput {
   note?: string;
 }
 
+export interface UpdateChallengeInput {
+  startDate?: Date;
+  title?: string;
+  description?: string;
+  dailyGoal?: number;
+  durationDays?: number;
+}
+
 export class ChallengeService {
   /**
    * Create a new challenge and auto-join the creator as participant
@@ -251,5 +259,32 @@ export class ChallengeService {
       lastCheckInDate: p.lastCheckInDate,
       status: p.status,
     }));
+  }
+
+  /**
+   * Update challenge properties such as startDate, title, description
+   */
+  static async updateChallenge(
+    id: string,
+    updates: UpdateChallengeInput
+  ): Promise<IChallenge | null> {
+    const challenge = await Challenge.findById(id);
+    if (!challenge) return null;
+
+    if (updates.title) challenge.title = updates.title.trim();
+    if (updates.description) challenge.description = updates.description.trim();
+    if (updates.dailyGoal) challenge.dailyGoal = updates.dailyGoal;
+    if (updates.durationDays) challenge.durationDays = updates.durationDays;
+
+    if (updates.startDate) {
+      challenge.startDate = updates.startDate;
+      const duration = challenge.durationDays || 30;
+      const newEndDate = new Date(updates.startDate);
+      newEndDate.setDate(updates.startDate.getDate() + duration);
+      challenge.endDate = newEndDate;
+    }
+
+    await challenge.save();
+    return challenge;
   }
 }
