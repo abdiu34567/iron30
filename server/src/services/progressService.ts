@@ -8,7 +8,7 @@ export interface DayHeatmapItem {
   date: string; // YYYY-MM-DD
   targetCount: number;
   loggedCount: number;
-  status: 'completed' | 'partial' | 'missed' | 'future';
+  status: 'completed' | 'partial' | 'missed' | 'future' | 'today';
 }
 
 export interface FriendProgressSummary {
@@ -45,12 +45,12 @@ export interface FriendProgressSummary {
 
 export class ProgressService {
   /**
-   * Helper to format a Date object into YYYY-MM-DD in UTC/local consistent string
+   * Helper to format a Date object into YYYY-MM-DD in UTC-consistent string
    */
   static formatDate(d: Date): string {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
+    const year = d.getUTCFullYear();
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
 
@@ -77,29 +77,42 @@ export class ProgressService {
       dailyMap.set(log.date, prev + log.count);
     }
 
-    const todayStr = this.formatDate(new Date());
+    const now = new Date();
+    const todayStr = this.formatDate(now);
     const startDate = new Date(challenge.startDate);
     const duration = challenge.durationDays;
     const dailyGoal = challenge.dailyGoal;
 
-    // Generate the 30-day (or challenge duration) heatmap
+    // Generate the challenge duration heatmap
     const heatmap: DayHeatmapItem[] = [];
     for (let dayIndex = 0; dayIndex < duration; dayIndex++) {
       const dayDate = new Date(startDate);
-      dayDate.setDate(startDate.getDate() + dayIndex);
+      dayDate.setUTCDate(startDate.getUTCDate() + dayIndex);
       const dateStr = this.formatDate(dayDate);
 
       const logged = dailyMap.get(dateStr) || 0;
 
-      let status: 'completed' | 'partial' | 'missed' | 'future';
+      let status: 'completed' | 'partial' | 'missed' | 'future' | 'today';
       if (dateStr > todayStr) {
         status = 'future';
-      } else if (logged >= dailyGoal) {
-        status = 'completed';
-      } else if (logged > 0) {
-        status = 'partial';
+      } else if (dateStr === todayStr) {
+        if (logged >= dailyGoal) {
+          status = 'completed';
+        } else if (logged > 0) {
+          status = 'partial';
+        } else {
+          // Today is active and in progress!
+          status = 'today';
+        }
       } else {
-        status = 'missed';
+        // Genuinely passed day
+        if (logged >= dailyGoal) {
+          status = 'completed';
+        } else if (logged > 0) {
+          status = 'partial';
+        } else {
+          status = 'missed';
+        }
       }
 
       heatmap.push({
@@ -111,17 +124,21 @@ export class ProgressService {
       });
     }
 
-    // Calculate pace and metrics
-    const now = new Date();
-    const msElapsed = Math.max(0, now.getTime() - startDate.getTime());
-    const daysElapsed = Math.min(
-      duration,
-      Math.max(1, Math.floor(msElapsed / (1000 * 60 * 60 * 24)) + 1)
-    );
+    // Calculate pace and metrics based on calendar days
+    let daysElapsed = 0;
+    const startStr = this.formatDate(startDate);
+    if (todayStr >= startStr) {
+      const [sy, sm, sd] = startStr.split('-').map(Number);
+      const [ty, tm, td] = todayStr.split('-').map(Number);
+      const startUtc = Date.UTC(sy, sm - 1, sd);
+      const todayUtc = Date.UTC(ty, tm - 1, td);
+      const diffDays = Math.round((todayUtc - startUtc) / (1000 * 60 * 60 * 24));
+      daysElapsed = Math.min(duration, Math.max(1, diffDays + 1));
+    }
     const daysRemaining = Math.max(0, duration - daysElapsed);
     const expectedProgress = Math.min(challenge.targetCount, daysElapsed * dailyGoal);
     const remainingToGoal = Math.max(0, challenge.targetCount - participant.totalProgress);
-    const dailyAverage = Math.round(participant.totalProgress / daysElapsed);
+    const dailyAverage = daysElapsed > 0 ? Math.round(participant.totalProgress / daysElapsed) : 0;
     const isOnTrack = participant.totalProgress >= expectedProgress;
     const progressPercentage = Math.min(
       100,

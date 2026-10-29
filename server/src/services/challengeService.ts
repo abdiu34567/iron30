@@ -355,10 +355,13 @@ export class ChallengeService {
     if (updates.durationDays) challenge.durationDays = updates.durationDays;
 
     if (updates.startDate) {
-      challenge.startDate = updates.startDate;
+      // Normalize to UTC midnight of the intended calendar date
+      const d = new Date(updates.startDate);
+      const cleanStartDate = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0));
+      challenge.startDate = cleanStartDate;
       const duration = challenge.durationDays || 30;
-      const newEndDate = new Date(updates.startDate);
-      newEndDate.setDate(updates.startDate.getDate() + duration);
+      const newEndDate = new Date(cleanStartDate);
+      newEndDate.setUTCDate(cleanStartDate.getUTCDate() + duration);
       challenge.endDate = newEndDate;
     }
 

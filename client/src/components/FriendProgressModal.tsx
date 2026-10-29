@@ -54,6 +54,8 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
         return 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-sm shadow-emerald-500/30';
       case 'partial':
         return 'bg-amber-500 hover:bg-amber-400 text-white';
+      case 'today':
+        return 'bg-blue-600/25 text-blue-300 border-2 border-blue-500 shadow-md shadow-blue-500/20';
       case 'missed':
         return 'bg-rose-500/40 text-rose-200 border border-rose-500/30';
       case 'future':
@@ -150,7 +152,7 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-1.5 text-xs font-bold text-white">
                 <Calendar className="w-4 h-4 text-blue-400" />
-                <span>30-Day Consistency Heatmap</span>
+                <span>{heatmap.length}-Day Consistency Heatmap</span>
               </div>
               <div className="flex items-center gap-2 text-[10px] text-slate-400">
                 <span className="flex items-center gap-1">
@@ -158,6 +160,9 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
                 </span>
                 <span className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-sm bg-amber-500 inline-block" /> Part
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-sm bg-blue-500 inline-block" /> Today
                 </span>
                 <span className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-sm bg-rose-500/50 inline-block" /> Miss

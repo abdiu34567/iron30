@@ -11,6 +11,9 @@ interface EditStartDateModalProps {
 }
 
 function toLocalYYYYMMDD(dateInput: string | Date): string {
+  if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateInput)) {
+    return dateInput.slice(0, 10);
+  }
   const d = new Date(dateInput);
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -40,25 +43,27 @@ export const EditStartDateModal: React.FC<EditStartDateModalProps> = ({
 
   const todayStr = toLocalYYYYMMDD(new Date());
 
-  // Calculate live preview metrics
+  // Calculate live preview metrics based on pure calendar days
   const calcDayMetrics = (dateStr: string) => {
     const [y, m, d] = dateStr.split('-').map(Number);
-    const start = new Date(y, m - 1, d);
-    const now = new Date();
-    const msDiff = now.getTime() - start.getTime();
+    const startUtc = new Date(Date.UTC(y, m - 1, d, 0, 0, 0));
 
-    if (msDiff < 0) {
-      const daysUntil = Math.ceil(Math.abs(msDiff) / (1000 * 60 * 60 * 24));
+    const now = new Date();
+    const curTodayStr = toLocalYYYYMMDD(now);
+    const [ty, tm, td] = curTodayStr.split('-').map(Number);
+    const todayUtc = new Date(Date.UTC(ty, tm - 1, td, 0, 0, 0));
+
+    const dayDiff = Math.round((todayUtc.getTime() - startUtc.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (dayDiff < 0) {
+      const daysUntil = Math.abs(dayDiff);
       return {
         badgeText: `Starts in ${daysUntil} day${daysUntil === 1 ? '' : 's'}`,
         colorClass: 'text-amber-400',
       };
     }
 
-    const dayNumber = Math.min(
-      challenge.durationDays,
-      Math.max(1, Math.floor(msDiff / (1000 * 60 * 60 * 24)) + 1)
-    );
+    const dayNumber = Math.min(challenge.durationDays, dayDiff + 1);
     const daysLeft = Math.max(0, challenge.durationDays - dayNumber);
 
     return {
@@ -81,9 +86,8 @@ export const EditStartDateModal: React.FC<EditStartDateModalProps> = ({
     try {
       setLoading(true);
       triggerHaptic('medium');
-      // Create date object at midnight local time
-      const [y, m, d] = selectedDate.split('-').map(Number);
-      const isoDate = new Date(y, m - 1, d, 0, 0, 0).toISOString();
+      // Send unambiguous UTC midnight string for the selected calendar date
+      const isoDate = `${selectedDate}T00:00:00.000Z`;
       await onUpdateStartDate(challenge._id, isoDate);
       triggerHaptic('success');
       onClose();

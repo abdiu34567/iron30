@@ -33,13 +33,25 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
     Math.round((userProgress / challenge.targetCount) * 100)
   );
 
-  const startDate = new Date(challenge.startDate);
+  // Pure calendar day diff calculation
+  const startDateStr =
+    typeof challenge.startDate === 'string' && /^\d{4}-\d{2}-\d{2}/.test(challenge.startDate)
+      ? challenge.startDate.slice(0, 10)
+      : new Date(challenge.startDate).toISOString().slice(0, 10);
+  const [sy, sm, sd] = startDateStr.split('-').map(Number);
+  const startUtc = new Date(Date.UTC(sy, sm - 1, sd, 0, 0, 0));
+
   const now = new Date();
-  const msElapsed = Math.max(0, now.getTime() - startDate.getTime());
-  const dayNumber = Math.min(
-    challenge.durationDays,
-    Math.max(1, Math.floor(msElapsed / (1000 * 60 * 60 * 24)) + 1)
-  );
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const [ty, tm, td] = [year, month, day].map(Number);
+  const todayUtc = new Date(Date.UTC(ty, tm - 1, td, 0, 0, 0));
+
+  const dayDiff = Math.round((todayUtc.getTime() - startUtc.getTime()) / (1000 * 60 * 60 * 24));
+  const isUpcoming = dayDiff < 0;
+  const daysUntil = Math.abs(dayDiff);
+  const dayNumber = isUpcoming ? daysUntil : Math.min(challenge.durationDays, dayDiff + 1);
   const daysLeft = Math.max(0, challenge.durationDays - dayNumber);
 
   // Only allow challenge author (or creator of seeded challenge) to edit dates
@@ -47,6 +59,10 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
     currentUserId !== undefined &&
     (challenge.creatorTelegramId === 0 || challenge.creatorTelegramId === currentUserId);
   const canEditDate = Boolean(isAuthor && onOpenEditDate);
+
+  const badgeText = isUpcoming
+    ? `Starts in ${dayNumber} day${dayNumber === 1 ? '' : 's'}`
+    : `Day ${dayNumber} of ${challenge.durationDays}`;
 
   return (
     <div className="relative overflow-hidden bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-5 shadow-2xl">
@@ -63,13 +79,13 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
               title="Click to edit starting date (Author)"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-              <span>Day {dayNumber} of {challenge.durationDays}</span>
+              <span>{badgeText}</span>
               <Calendar className="w-3 h-3 text-blue-400/70 group-hover:text-blue-300 ml-0.5" />
             </button>
           ) : (
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-              Day {dayNumber} of {challenge.durationDays}
+              {badgeText}
             </span>
           )}
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-800/80 text-slate-300">

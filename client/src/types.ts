@@ -33,7 +33,7 @@ export interface DayHeatmapItem {
   date: string;
   targetCount: number;
   loggedCount: number;
-  status: 'completed' | 'partial' | 'missed' | 'future';
+  status: 'completed' | 'partial' | 'missed' | 'future' | 'today';
 }
 
 export interface FriendProgress {
