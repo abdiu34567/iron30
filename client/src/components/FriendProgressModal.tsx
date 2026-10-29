@@ -36,10 +36,12 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  if (!isOpen || !progress) return null;
+  if (!isOpen || !progress || !progress.participant || !progress.stats) return null;
 
-  const { participant, stats, heatmap, recentLogs } = progress;
-  const isCurrentUser = currentUserId !== undefined && participant.userId === currentUserId;
+  const { participant, stats } = progress;
+  const heatmap = progress.heatmap || [];
+  const recentLogs = progress.recentLogs || [];
+  const isCurrentUser = currentUserId !== undefined && participant?.userId === currentUserId;
 
   const handleDayClick = (item: DayHeatmapItem) => {
     triggerHaptic('light');

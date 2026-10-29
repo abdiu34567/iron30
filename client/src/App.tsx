@@ -174,12 +174,14 @@ export function App() {
       await Promise.all([fetchChallenges(), fetchLeaderboard(selectedChallenge._id)]);
       
       // If the progress modal is open for current user, refresh it immediately in-place
-      if (isFriendModalOpen && selectedFriendProgress?.participant.userId === user.id) {
+      if (isFriendModalOpen && selectedFriendProgress?.participant?.userId === user.id) {
         try {
           const progRes = await fetch(`/api/challenges/${selectedChallenge._id}/participants/${user.id}/progress`);
           if (progRes.ok) {
-            const progData = await progRes.json();
-            setSelectedFriendProgress(progData);
+            const progJson = await progRes.json();
+            if (progJson.success && progJson.data) {
+              setSelectedFriendProgress(progJson.data);
+            }
           }
         } catch (e) {
           console.error('Failed to refresh friend progress in-place:', e);
