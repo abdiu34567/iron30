@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FriendProgress, DayHeatmapItem } from '../types';
+import { UserAvatar } from './UserAvatar';
 import { X, Flame, BellRing, Check, TrendingUp, Calendar, Clock, MessageSquare, PlusCircle, Plus } from 'lucide-react';
 
 interface FriendProgressModalProps {
@@ -67,13 +68,12 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
         {/* Header with User Info */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-3">
-            <img
-              src={
-                participant.photoUrl ||
-                `https://api.dicebear.com/7.x/bottts/svg?seed=${participant.userId}`
-              }
-              alt={participant.userName}
-              className="w-12 h-12 rounded-full object-cover ring-2 ring-blue-500/40"
+            <UserAvatar
+              name={participant.userName}
+              photoUrl={participant.photoUrl}
+              id={participant.userId}
+              size="lg"
+              className="ring-2 ring-blue-500/40"
             />
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-1.5">

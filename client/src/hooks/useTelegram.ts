@@ -23,7 +23,6 @@ function getOrCreateGuestUser(): TelegramUser {
   const guest: TelegramUser = {
     id: 9000000 + randomNum,
     first_name: `Runner #${randomNum}`,
-    photo_url: `https://api.dicebear.com/7.x/bottts/svg?seed=runner_${randomNum}`,
   };
 
   try {

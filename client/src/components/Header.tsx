@@ -1,5 +1,6 @@
 import React from 'react';
 import { TelegramUser } from '../types';
+import { UserAvatar } from './UserAvatar';
 import { Plus, BarChart3 } from 'lucide-react';
 
 interface HeaderProps {
@@ -19,10 +20,12 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="flex items-center justify-between pb-4 border-b border-slate-800/80">
       <div className="flex items-center gap-3">
         <div className="relative">
-          <img
-            src={user.photo_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
-            alt={user.first_name}
-            className="w-10 h-10 rounded-full object-cover ring-2 ring-blue-500/50"
+          <UserAvatar
+            name={user.first_name}
+            photoUrl={user.photo_url}
+            id={user.id}
+            size="md"
+            className="ring-2 ring-blue-500/50"
           />
           <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-slate-950 rounded-full" />
         </div>

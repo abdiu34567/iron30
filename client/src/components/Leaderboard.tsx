@@ -1,5 +1,6 @@
 import React from 'react';
 import { LeaderboardUser } from '../types';
+import { UserAvatar } from './UserAvatar';
 import { Flame, ChevronRight, Trophy, Users } from 'lucide-react';
 
 interface LeaderboardProps {
@@ -80,13 +81,12 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
 
                 {/* Avatar */}
                 <div className="relative shrink-0">
-                  <img
-                    src={
-                      p.photoUrl ||
-                      `https://api.dicebear.com/7.x/bottts/svg?seed=${p.userId}`
-                    }
-                    alt={p.userName}
-                    className="w-10 h-10 rounded-full object-cover border border-slate-700"
+                  <UserAvatar
+                    name={p.userName}
+                    photoUrl={p.photoUrl}
+                    id={p.userId}
+                    size="md"
+                    className="border border-slate-700"
                   />
                   {p.currentStreak > 0 && (
                     <div className="absolute -bottom-1 -right-1 bg-slate-950 border border-slate-800 px-1 py-0.2 rounded-full flex items-center text-[10px] text-orange-400 font-black">
