@@ -38,7 +38,7 @@ export const AnalyticsBanner: React.FC<AnalyticsBannerProps> = ({
 
   // --- CURRENT CHALLENGE METRICS ---
   const challengeTotal = selectedChallenge.totalCompletedCount || 0;
-  const challengeParticipantCount = selectedChallenge.participantCount || participants.length || 0;
+  const challengeParticipantCount = participants.length || selectedChallenge.participantCount || 0;
   const challengeTargetTotal = selectedChallenge.targetCount * Math.max(1, challengeParticipantCount);
   const challengePercentage =
     challengeTargetTotal > 0

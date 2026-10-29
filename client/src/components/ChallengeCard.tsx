@@ -8,6 +8,7 @@ interface ChallengeCardProps {
   isJoined: boolean;
   joining: boolean;
   currentUserId?: number;
+  participantCount?: number;
   onJoin: () => void;
   onOpenCheckIn: () => void;
   onShare: () => void;
@@ -20,6 +21,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   isJoined,
   joining,
   currentUserId,
+  participantCount,
   onJoin,
   onOpenCheckIn,
   onShare,
@@ -72,7 +74,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
           )}
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-800/80 text-slate-300">
             <Users className="w-3.5 h-3.5 text-slate-400" />
-            {challenge.participantCount || 0}
+            {participantCount !== undefined ? participantCount : (challenge.participantCount || 0)}
           </span>
         </div>
 

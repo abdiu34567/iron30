@@ -307,6 +307,7 @@ export function App() {
             isJoined={isJoined}
             joining={joining}
             currentUserId={user.id}
+            participantCount={leaderboard.length || selectedChallenge.participantCount || 0}
             onJoin={handleJoinChallenge}
             onOpenCheckIn={() => {
               triggerHaptic('light');

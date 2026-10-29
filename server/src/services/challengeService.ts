@@ -103,19 +103,77 @@ export class ChallengeService {
   }
 
   /**
-   * List all active or recent challenges
+   * List all active or recent challenges with real-time calculated participant & progress stats
    */
-  static async getChallenges(status?: string): Promise<IChallenge[]> {
+  static async getChallenges(status?: string): Promise<any[]> {
     const query = status ? { status } : {};
-    return Challenge.find(query).sort({ createdAt: -1 });
+    const challenges = await Challenge.find(query).sort({ createdAt: -1 }).lean();
+
+    return Promise.all(
+      challenges.map(async (challenge) => {
+        const participantCount = await Participant.countDocuments({
+          challengeId: challenge._id,
+        });
+
+        const progressAgg = await Participant.aggregate([
+          { $match: { challengeId: challenge._id } },
+          { $group: { _id: null, total: { $sum: '$totalProgress' } } },
+        ]);
+        const totalCompletedCount = progressAgg[0]?.total || 0;
+
+        // Keep database document in sync with true reality
+        if (
+          challenge.participantCount !== participantCount ||
+          challenge.totalCompletedCount !== totalCompletedCount
+        ) {
+          Challenge.findByIdAndUpdate(challenge._id, {
+            participantCount,
+            totalCompletedCount,
+          }).exec();
+        }
+
+        return {
+          ...challenge,
+          participantCount,
+          totalCompletedCount,
+        };
+      })
+    );
   }
 
   /**
-   * Get single challenge by ID
+   * Get single challenge by ID with real-time calculated participant count
    */
-  static async getChallengeById(id: string): Promise<IChallenge | null> {
+  static async getChallengeById(id: string): Promise<any | null> {
     if (!Types.ObjectId.isValid(id)) return null;
-    return Challenge.findById(id);
+    const challenge = await Challenge.findById(id).lean();
+    if (!challenge) return null;
+
+    const participantCount = await Participant.countDocuments({
+      challengeId: challenge._id,
+    });
+
+    const progressAgg = await Participant.aggregate([
+      { $match: { challengeId: challenge._id } },
+      { $group: { _id: null, total: { $sum: '$totalProgress' } } },
+    ]);
+    const totalCompletedCount = progressAgg[0]?.total || 0;
+
+    if (
+      challenge.participantCount !== participantCount ||
+      challenge.totalCompletedCount !== totalCompletedCount
+    ) {
+      Challenge.findByIdAndUpdate(challenge._id, {
+        participantCount,
+        totalCompletedCount,
+      }).exec();
+    }
+
+    return {
+      ...challenge,
+      participantCount,
+      totalCompletedCount,
+    };
   }
 
   /**
@@ -156,12 +214,15 @@ export class ChallengeService {
         bestStreak: 0,
         status: 'active',
       });
-
-      // Increment participant count
-      await Challenge.findByIdAndUpdate(input.challengeId, {
-        $inc: { participantCount: 1 },
-      });
     }
+
+    // Always recalculate real participantCount from database
+    const realParticipantCount = await Participant.countDocuments({
+      challengeId: input.challengeId,
+    });
+    await Challenge.findByIdAndUpdate(input.challengeId, {
+      participantCount: realParticipantCount,
+    });
 
     return participant;
   }
@@ -194,10 +255,6 @@ export class ChallengeService {
         bestStreak: 0,
         status: 'active',
       });
-
-      await Challenge.findByIdAndUpdate(input.challengeId, {
-        $inc: { participantCount: 1 },
-      });
     }
 
     const todayStr = ProgressService.formatDate(new Date());
@@ -229,9 +286,19 @@ export class ChallengeService {
 
     await participant.save();
 
-    // Increment challenge overall tally
+    // Recalculate true overall tally and participant count
+    const [realParticipantCount, progressAgg] = await Promise.all([
+      Participant.countDocuments({ challengeId: input.challengeId }),
+      Participant.aggregate([
+        { $match: { challengeId: new Types.ObjectId(input.challengeId) } },
+        { $group: { _id: null, total: { $sum: '$totalProgress' } } },
+      ]),
+    ]);
+    const realTotal = progressAgg[0]?.total || 0;
+
     await Challenge.findByIdAndUpdate(input.challengeId, {
-      $inc: { totalCompletedCount: input.count },
+      participantCount: realParticipantCount,
+      totalCompletedCount: realTotal,
     });
 
     return { log, participant };
