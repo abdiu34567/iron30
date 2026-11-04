@@ -54,9 +54,11 @@ export class ChallengeService {
    */
   static async createChallenge(input: CreateChallengeInput): Promise<IChallenge> {
     const durationDays = input.durationDays || 30;
-    const startDate = input.startDate || new Date();
+    const rawStart = input.startDate || new Date();
+    const d = new Date(rawStart);
+    const startDate = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0));
     const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + durationDays);
+    endDate.setUTCDate(startDate.getUTCDate() + durationDays);
 
     const targetCount = input.targetCount;
     const dailyGoal = input.dailyGoal || Math.ceil(targetCount / durationDays);
@@ -106,9 +108,15 @@ export class ChallengeService {
   /**
    * List all active or recent challenges with real-time calculated participant & progress stats
    */
-  static async getChallenges(status?: string): Promise<any[]> {
+  static async getChallenges(status?: string, userId?: number): Promise<any[]> {
     const query = status ? { status } : {};
     const challenges = await Challenge.find(query).sort({ createdAt: -1 }).lean();
+
+    const userJoinedSet = new Set<string>();
+    if (userId) {
+      const userParts = await Participant.find({ userId }, { challengeId: 1 }).lean();
+      userParts.forEach((p) => userJoinedSet.add(p.challengeId.toString()));
+    }
 
     return Promise.all(
       challenges.map(async (challenge) => {
@@ -137,6 +145,7 @@ export class ChallengeService {
           ...challenge,
           participantCount,
           totalCompletedCount,
+          isJoined: userJoinedSet.has(challenge._id.toString()),
         };
       })
     );

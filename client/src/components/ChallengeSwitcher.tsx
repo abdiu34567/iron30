@@ -42,13 +42,28 @@ export const ChallengeSwitcher: React.FC<ChallengeSwitcherProps> = ({
           const isSelected = c._id === selectedChallengeId;
           const isJoined = joinedChallengeIds.has(c._id);
 
-          const startDate = new Date(c.startDate);
+          const startDateStr =
+            typeof c.startDate === 'string' && /^\d{4}-\d{2}-\d{2}/.test(c.startDate)
+              ? c.startDate.slice(0, 10)
+              : new Date(c.startDate).toISOString().slice(0, 10);
+          const [sy, sm, sd] = startDateStr.split('-').map(Number);
+          const startUtc = new Date(Date.UTC(sy, sm - 1, sd, 0, 0, 0));
+
           const now = new Date();
-          const msElapsed = Math.max(0, now.getTime() - startDate.getTime());
-          const dayNumber = Math.min(
-            c.durationDays,
-            Math.max(1, Math.floor(msElapsed / (1000 * 60 * 60 * 24)) + 1)
-          );
+          const [ty, tm, td] = [
+            now.getFullYear(),
+            String(now.getMonth() + 1).padStart(2, '0'),
+            String(now.getDate()).padStart(2, '0'),
+          ].map(Number);
+          const todayUtc = new Date(Date.UTC(ty, tm - 1, td, 0, 0, 0));
+
+          const dayDiff = Math.round((todayUtc.getTime() - startUtc.getTime()) / (1000 * 60 * 60 * 24));
+          const isUpcoming = dayDiff < 0;
+          const daysUntil = Math.abs(dayDiff);
+          const dayNumber = isUpcoming ? daysUntil : Math.min(c.durationDays, dayDiff + 1);
+          const badgeText = isUpcoming
+            ? `Starts in ${dayNumber}d`
+            : `Day ${dayNumber}/${c.durationDays}`;
 
           return (
             <button
@@ -69,7 +84,7 @@ export const ChallengeSwitcher: React.FC<ChallengeSwitcherProps> = ({
 
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700/60">
-                  Day {dayNumber}/{c.durationDays}
+                  {badgeText}
                 </span>
 
                 {isJoined ? (

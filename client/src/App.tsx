@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTelegram } from './hooks/useTelegram';
 import { Challenge, LeaderboardUser, FriendProgress } from './types';
 import { Header } from './components/Header';
@@ -27,6 +27,9 @@ export function App() {
   // Set of challenge IDs user has joined
   const [joinedChallengeIds, setJoinedChallengeIds] = useState<Set<string>>(new Set());
 
+  // Track handled deep link so startParam only activates on initial load, not overriding user selections
+  const handledStartParamRef = useRef<string | null>(null);
+
   // Modals state
   const [isCheckInOpen, setIsCheckInOpen] = useState<boolean>(false);
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
@@ -36,29 +39,54 @@ export function App() {
   const [isFriendModalOpen, setIsFriendModalOpen] = useState<boolean>(false);
   const [loadingFriend, setLoadingFriend] = useState<boolean>(false);
 
-  // Fetch all challenges
-  const fetchChallenges = useCallback(async () => {
-    try {
-      const res = await fetch('/api/challenges');
-      const json = await res.json();
-      if (json.success && json.data?.length > 0) {
-        setChallenges(json.data);
-        setSelectedChallenge((prev) => {
-          // If a deep-linked startParam matches, always prioritize it
-          if (startParam) {
-            const startMatch = json.data.find((c: Challenge) => c._id === startParam);
-            if (startMatch) return startMatch;
+  // Fetch all challenges with optional target selection
+  const fetchChallenges = useCallback(
+    async (targetChallengeId?: string) => {
+      try {
+        const queryParam = user?.id ? `?userId=${user.id}` : '';
+        const res = await fetch(`/api/challenges${queryParam}`);
+        const json = await res.json();
+        if (json.success && json.data?.length > 0) {
+          setChallenges(json.data);
+
+          // Populate joined set from backend response
+          const joinedSet = new Set<string>();
+          json.data.forEach((c: Challenge) => {
+            if (c.isJoined) joinedSet.add(c._id);
+          });
+          if (joinedSet.size > 0) {
+            setJoinedChallengeIds((prev) => new Set([...prev, ...joinedSet]));
           }
-          if (!prev) return json.data[0];
-          // Keep current selection if still valid, otherwise first
-          const found = json.data.find((c: Challenge) => c._id === prev._id);
-          return found || json.data[0];
-        });
+
+          setSelectedChallenge((prev) => {
+            // 1. Explicit target requested (e.g. newly created challenge)
+            if (targetChallengeId) {
+              const targetMatch = json.data.find((c: Challenge) => c._id === targetChallengeId);
+              if (targetMatch) return targetMatch;
+            }
+            // 2. Initial deep-linked startParam if not yet applied
+            if (startParam && handledStartParamRef.current !== startParam) {
+              const startMatch = json.data.find((c: Challenge) => c._id === startParam);
+              if (startMatch) {
+                handledStartParamRef.current = startParam;
+                return startMatch;
+              }
+            }
+            // 3. Keep current selection if still valid
+            if (prev) {
+              const found = json.data.find((c: Challenge) => c._id === prev._id);
+              if (found) return found;
+            }
+            // 4. Default to first challenge
+            return json.data[0];
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch challenges:', err);
       }
-    } catch (err) {
-      console.error('Failed to fetch challenges:', err);
-    }
-  }, [startParam]);
+    },
+    [startParam, user?.id]
+  );
 
   // Fetch leaderboard for active challenge
   const fetchLeaderboard = useCallback(async (challengeId: string) => {
@@ -90,15 +118,16 @@ export function App() {
     loadData();
   }, [loadData]);
 
-  // Auto-switch to challenge if startParam is detected or updates
+  // Auto-switch to challenge if an unhandled startParam is detected
   useEffect(() => {
-    if (startParam && challenges.length > 0) {
+    if (startParam && challenges.length > 0 && handledStartParamRef.current !== startParam) {
       const match = challenges.find((c) => c._id === startParam);
-      if (match && selectedChallenge?._id !== match._id) {
+      if (match) {
+        handledStartParamRef.current = startParam;
         setSelectedChallenge(match);
       }
     }
-  }, [startParam, challenges, selectedChallenge?._id]);
+  }, [startParam, challenges]);
 
   // When selected challenge changes, load its leaderboard
   useEffect(() => {
@@ -409,7 +438,8 @@ export function App() {
           onClose={() => setIsCreateOpen(false)}
           user={user}
           onCreated={(newId) => {
-            fetchChallenges();
+            setJoinedChallengeIds((prev) => new Set(prev).add(newId));
+            fetchChallenges(newId);
           }}
           triggerHaptic={triggerHaptic}
         />

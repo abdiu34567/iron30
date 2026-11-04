@@ -49,7 +49,7 @@ export const CreateChallengeModal: React.FC<CreateChallengeModalProps> = ({
           unit: unit.trim().toLowerCase(),
           durationDays,
           dailyGoal,
-          startDate: startDate ? new Date(startDate).toISOString() : undefined,
+          startDate: startDate ? `${startDate}T00:00:00.000Z` : undefined,
           creatorTelegramId: user.id,
           creatorName: user.first_name,
           creatorUsername: user.username,

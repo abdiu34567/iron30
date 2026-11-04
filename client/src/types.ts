@@ -12,6 +12,7 @@ export interface Challenge {
   status: 'upcoming' | 'active' | 'completed';
   participantCount: number;
   totalCompletedCount: number;
+  isJoined?: boolean;
   createdAt: string;
 }
 

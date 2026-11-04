@@ -7,7 +7,8 @@ const router = Router();
 router.get('/', async (req: Request, res: Response) => {
   try {
     const status = req.query.status as string | undefined;
-    const challenges = await ChallengeService.getChallenges(status);
+    const userId = req.query.userId ? Number(req.query.userId) : undefined;
+    const challenges = await ChallengeService.getChallenges(status, userId);
     res.json({ success: true, data: challenges });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
