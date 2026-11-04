@@ -245,9 +245,11 @@ export class ChallengeService {
     log: ICheckInLog;
     participant: IParticipant;
   }> {
-    if (input.count <= 0) {
-      throw new Error('Check-in count must be greater than zero');
+    if (isNaN(input.count)) {
+      throw new Error('Check-in count must be a valid number');
     }
+
+    const cleanCount = Math.round(input.count * 100) / 100;
 
     let participant = await Participant.findOne({
       challengeId: input.challengeId,
@@ -276,7 +278,7 @@ export class ChallengeService {
       challengeId: input.challengeId,
       participantId: participant._id,
       userId: input.userId,
-      count: input.count,
+      count: cleanCount,
       date: logDate,
       note: input.note,
       tradeOutcome: input.tradeOutcome,
@@ -291,7 +293,7 @@ export class ChallengeService {
     }
 
     // Update participant
-    participant.totalProgress += input.count;
+    participant.totalProgress = Math.round((participant.totalProgress + cleanCount) * 100) / 100;
 
     // Check if goal reached
     const challenge = await Challenge.findById(input.challengeId);

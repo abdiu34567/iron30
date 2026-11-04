@@ -34,7 +34,6 @@ const CheckInLogSchema = new Schema<ICheckInLog>(
     count: {
       type: Number,
       required: true,
-      min: 1,
     },
     date: {
       type: String, // YYYY-MM-DD

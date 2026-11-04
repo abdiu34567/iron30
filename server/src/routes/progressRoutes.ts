@@ -9,10 +9,22 @@ router.post('/:id/checkin', async (req: Request, res: Response) => {
   try {
     const { userId, userName, username, photoUrl, count, note, date, tradeOutcome } = req.body;
 
-    if (!userId || !count) {
+    let numericCount: number;
+    if (typeof count === 'number') {
+      numericCount = count;
+    } else if (typeof count === 'string') {
+      const isNeg = count.includes('-');
+      const clean = count.replace(/[^0-9.]/g, '');
+      const parsed = parseFloat(clean);
+      numericCount = isNaN(parsed) ? NaN : (isNeg ? -parsed : parsed);
+    } else {
+      numericCount = NaN;
+    }
+
+    if (!userId || isNaN(numericCount)) {
       return res.status(400).json({
         success: false,
-        error: 'userId and count are required',
+        error: 'userId and a valid count are required',
       });
     }
 
@@ -23,7 +35,7 @@ router.post('/:id/checkin', async (req: Request, res: Response) => {
       userName,
       username,
       photoUrl,
-      count: Number(count),
+      count: Math.round(numericCount * 100) / 100,
       note,
       date,
       tradeOutcome,

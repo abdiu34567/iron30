@@ -180,12 +180,7 @@ export function App() {
   };
 
   // Submit check-in
-  const handleCheckIn = async (
-    count: number,
-    note?: string,
-    date?: string,
-    tradeOutcome?: 'win' | 'loss' | 'breakeven'
-  ) => {
+  const handleCheckIn = async (count: number, note?: string, date?: string) => {
     if (!selectedChallenge) return;
 
     const res = await fetch(`/api/challenges/${selectedChallenge._id}/checkin`, {
@@ -199,7 +194,6 @@ export function App() {
         count,
         note,
         date,
-        tradeOutcome,
       }),
     });
 

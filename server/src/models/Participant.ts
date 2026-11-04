@@ -46,7 +46,6 @@ const ParticipantSchema = new Schema<IParticipant>(
     totalProgress: {
       type: Number,
       default: 0,
-      min: 0,
     },
     currentStreak: {
       type: Number,
