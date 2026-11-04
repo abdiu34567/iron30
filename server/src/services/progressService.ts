@@ -9,6 +9,9 @@ export interface DayHeatmapItem {
   targetCount: number;
   loggedCount: number;
   status: 'completed' | 'partial' | 'missed' | 'future' | 'today';
+  tradeOutcome?: 'win' | 'loss' | 'breakeven' | 'mixed';
+  winCount?: number;
+  lossCount?: number;
 }
 
 export interface FriendProgressSummary {
@@ -32,6 +35,13 @@ export interface FriendProgressSummary {
     expectedProgress: number;
     isOnTrack: boolean;
     remainingToGoal: number;
+    tradeStats?: {
+      winCount: number;
+      lossCount: number;
+      breakevenCount: number;
+      totalTrades: number;
+      winRate: number;
+    };
   };
   heatmap: DayHeatmapItem[];
   recentLogs: Array<{
@@ -39,6 +49,7 @@ export interface FriendProgressSummary {
     count: number;
     date: string;
     note?: string;
+    tradeOutcome?: 'win' | 'loss' | 'breakeven';
     createdAt: Date;
   }>;
 }
@@ -70,11 +81,33 @@ export class ProgressService {
     // Fetch all logs for this participant in this challenge
     const logs = await CheckInLog.find({ challengeId, userId }).sort({ createdAt: -1 });
 
-    // Aggregate daily counts: Map<YYYY-MM-DD, totalForDay>
+    const isTradeChallenge = challenge.unit?.toLowerCase().includes('trade') || false;
+
+    // Aggregate daily counts & trade outcomes
     const dailyMap = new Map<string, number>();
+    const dailyTradesMap = new Map<string, { wins: number; losses: number; breakevens: number }>();
+    let totalWins = 0;
+    let totalLosses = 0;
+    let totalBreakevens = 0;
+
     for (const log of logs) {
       const prev = dailyMap.get(log.date) || 0;
       dailyMap.set(log.date, prev + log.count);
+
+      if (log.tradeOutcome) {
+        const tradeDay = dailyTradesMap.get(log.date) || { wins: 0, losses: 0, breakevens: 0 };
+        if (log.tradeOutcome === 'win') {
+          tradeDay.wins += 1;
+          totalWins += 1;
+        } else if (log.tradeOutcome === 'loss') {
+          tradeDay.losses += 1;
+          totalLosses += 1;
+        } else if (log.tradeOutcome === 'breakeven') {
+          tradeDay.breakevens += 1;
+          totalBreakevens += 1;
+        }
+        dailyTradesMap.set(log.date, tradeDay);
+      }
     }
 
     const now = new Date();
@@ -115,12 +148,34 @@ export class ProgressService {
         }
       }
 
+      let dayTradeOutcome: 'win' | 'loss' | 'breakeven' | 'mixed' | undefined;
+      let winCount: number | undefined;
+      let lossCount: number | undefined;
+
+      if (isTradeChallenge) {
+        const dayTrades = dailyTradesMap.get(dateStr);
+        if (dayTrades) {
+          winCount = dayTrades.wins;
+          lossCount = dayTrades.losses;
+          if (dayTrades.wins > 0 && dayTrades.losses === 0 && dayTrades.breakevens === 0) {
+            dayTradeOutcome = 'win';
+          } else if (dayTrades.losses > 0 && dayTrades.wins === 0 && dayTrades.breakevens === 0) {
+            dayTradeOutcome = 'loss';
+          } else if (dayTrades.breakevens > 0 && dayTrades.wins === 0 && dayTrades.losses === 0) {
+            dayTradeOutcome = 'breakeven';
+          } else if (dayTrades.wins + dayTrades.losses + dayTrades.breakevens > 0) {
+            dayTradeOutcome = 'mixed';
+          }
+        }
+      }
+
       heatmap.push({
         dayNumber: dayIndex + 1,
         date: dateStr,
         targetCount: dailyGoal,
         loggedCount: logged,
         status,
+        ...(isTradeChallenge ? { tradeOutcome: dayTradeOutcome, winCount, lossCount } : {}),
       });
     }
 
@@ -145,6 +200,10 @@ export class ProgressService {
       Math.round((participant.totalProgress / challenge.targetCount) * 100)
     );
 
+    const totalDecidedTrades = totalWins + totalLosses;
+    const winRate = totalDecidedTrades > 0 ? Math.round((totalWins / totalDecidedTrades) * 100) : 0;
+    const totalTrades = totalWins + totalLosses + totalBreakevens;
+
     return {
       participant: {
         userId: participant.userId,
@@ -166,6 +225,15 @@ export class ProgressService {
         expectedProgress,
         isOnTrack,
         remainingToGoal,
+        ...(isTradeChallenge ? {
+          tradeStats: {
+            winCount: totalWins,
+            lossCount: totalLosses,
+            breakevenCount: totalBreakevens,
+            totalTrades,
+            winRate,
+          },
+        } : {}),
       },
       heatmap,
       recentLogs: logs.slice(0, 15).map((l) => ({
@@ -173,6 +241,7 @@ export class ProgressService {
         count: l.count,
         date: l.date,
         note: l.note,
+        tradeOutcome: l.tradeOutcome,
         createdAt: l.createdAt,
       })),
     };

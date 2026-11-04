@@ -37,6 +37,7 @@ export interface AddCheckInInput {
   count: number;
   note?: string;
   date?: string;
+  tradeOutcome?: 'win' | 'loss' | 'breakeven';
 }
 
 export interface UpdateChallengeInput {
@@ -278,6 +279,7 @@ export class ChallengeService {
       count: input.count,
       date: logDate,
       note: input.note,
+      tradeOutcome: input.tradeOutcome,
     });
 
     // Calculate streaks

@@ -7,7 +7,7 @@ const router = Router();
 // POST check-in progress
 router.post('/:id/checkin', async (req: Request, res: Response) => {
   try {
-    const { userId, userName, username, photoUrl, count, note, date } = req.body;
+    const { userId, userName, username, photoUrl, count, note, date, tradeOutcome } = req.body;
 
     if (!userId || !count) {
       return res.status(400).json({
@@ -26,6 +26,7 @@ router.post('/:id/checkin', async (req: Request, res: Response) => {
       count: Number(count),
       note,
       date,
+      tradeOutcome,
     });
 
     res.json({ success: true, data: result });

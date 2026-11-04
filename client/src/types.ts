@@ -35,6 +35,9 @@ export interface DayHeatmapItem {
   targetCount: number;
   loggedCount: number;
   status: 'completed' | 'partial' | 'missed' | 'future' | 'today';
+  tradeOutcome?: 'win' | 'loss' | 'breakeven' | 'mixed';
+  winCount?: number;
+  lossCount?: number;
 }
 
 export interface FriendProgress {
@@ -58,6 +61,13 @@ export interface FriendProgress {
     expectedProgress: number;
     isOnTrack: boolean;
     remainingToGoal: number;
+    tradeStats?: {
+      winCount: number;
+      lossCount: number;
+      breakevenCount: number;
+      totalTrades: number;
+      winRate: number;
+    };
   };
   heatmap: DayHeatmapItem[];
   recentLogs: Array<{
@@ -65,6 +75,7 @@ export interface FriendProgress {
     count: number;
     date: string;
     note?: string;
+    tradeOutcome?: 'win' | 'loss' | 'breakeven';
     createdAt: string;
   }>;
 }

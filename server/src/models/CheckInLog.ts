@@ -7,6 +7,7 @@ export interface ICheckInLog extends Document {
   count: number;
   date: string; // YYYY-MM-DD
   note?: string;
+  tradeOutcome?: 'win' | 'loss' | 'breakeven';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,6 +45,11 @@ const CheckInLogSchema = new Schema<ICheckInLog>(
       type: String,
       trim: true,
       maxlength: 280,
+    },
+    tradeOutcome: {
+      type: String,
+      enum: ['win', 'loss', 'breakeven'],
+      required: false,
     },
   },
   {
