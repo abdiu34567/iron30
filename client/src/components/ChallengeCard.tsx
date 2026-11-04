@@ -30,10 +30,10 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   onOpenEditDate,
 }) => {
   const userProgress = currentUserProgress?.totalProgress || 0;
-  const userPercentage = Math.min(
-    100,
-    Math.round((userProgress / challenge.targetCount) * 100)
-  );
+  const userPercentage =
+    challenge.targetCount > 0
+      ? Math.min(100, Math.max(0, Math.round((userProgress / challenge.targetCount) * 100)))
+      : 0;
 
   // Pure calendar day diff calculation
   const startDateStr =
