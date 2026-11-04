@@ -1,6 +1,6 @@
 import React from 'react';
 import { Challenge, LeaderboardUser } from '../types';
-import { Calendar, CheckCircle2, ChevronRight, Share2, PlusCircle, Rocket, Target, Users } from 'lucide-react';
+import { Calendar, CheckCircle2, ChevronRight, Share2, PlusCircle, Rocket, Target, Users, Edit3 } from 'lucide-react';
 
 interface ChallengeCardProps {
   challenge: Challenge;
@@ -12,6 +12,7 @@ interface ChallengeCardProps {
   onJoin: () => void;
   onOpenCheckIn: () => void;
   onShare: () => void;
+  onOpenEdit?: () => void;
   onOpenEditDate?: () => void;
 }
 
@@ -25,6 +26,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   onJoin,
   onOpenCheckIn,
   onShare,
+  onOpenEdit,
   onOpenEditDate,
 }) => {
   const userProgress = currentUserProgress?.totalProgress || 0;
@@ -54,11 +56,12 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   const dayNumber = isUpcoming ? daysUntil : Math.min(challenge.durationDays, dayDiff + 1);
   const daysLeft = Math.max(0, challenge.durationDays - dayNumber);
 
-  // Only allow challenge author (or creator of seeded challenge) to edit dates
+  // Only allow challenge author (or creator of seeded challenge) to edit settings
   const isAuthor =
     currentUserId !== undefined &&
     (challenge.creatorTelegramId === 0 || challenge.creatorTelegramId === currentUserId);
-  const canEditDate = Boolean(isAuthor && onOpenEditDate);
+  const handleEdit = onOpenEdit || onOpenEditDate;
+  const canEdit = Boolean(isAuthor && handleEdit);
 
   const badgeText = isUpcoming
     ? `Starts in ${dayNumber} day${dayNumber === 1 ? '' : 's'}`
@@ -72,15 +75,15 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
       {/* Top badges */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          {canEditDate ? (
+          {canEdit ? (
             <button
-              onClick={onOpenEditDate}
+              onClick={handleEdit}
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30 hover:bg-blue-500/25 active:scale-95 transition-all group"
-              title="Click to edit starting date (Author)"
+              title="Click to edit challenge details (Author)"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
               <span>{badgeText}</span>
-              <Calendar className="w-3 h-3 text-blue-400/70 group-hover:text-blue-300 ml-0.5" />
+              <Edit3 className="w-3 h-3 text-blue-400/70 group-hover:text-blue-300 ml-0.5" />
             </button>
           ) : (
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">
@@ -95,14 +98,14 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5">
-          {canEditDate && (
+          {canEdit && (
             <button
-              onClick={onOpenEditDate}
+              onClick={handleEdit}
               className="p-1.5 text-slate-400 hover:text-white bg-slate-800/60 rounded-xl transition-colors"
-              aria-label="Edit Start Date"
-              title="Edit start date (Author only)"
+              aria-label="Edit Challenge"
+              title="Edit challenge details (Creator only)"
             >
-              <Calendar className="w-4 h-4" />
+              <Edit3 className="w-4 h-4" />
             </button>
           )}
           <button

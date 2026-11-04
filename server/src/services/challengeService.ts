@@ -45,6 +45,8 @@ export interface UpdateChallengeInput {
   startDate?: Date;
   title?: string;
   description?: string;
+  targetCount?: number;
+  unit?: string;
   dailyGoal?: number;
   durationDays?: number;
 }
@@ -368,12 +370,19 @@ export class ChallengeService {
 
     if (updates.title) challenge.title = updates.title.trim();
     if (updates.description) challenge.description = updates.description.trim();
-    if (updates.dailyGoal) challenge.dailyGoal = updates.dailyGoal;
-    if (updates.durationDays) challenge.durationDays = updates.durationDays;
+    if (updates.targetCount && updates.targetCount > 0) challenge.targetCount = updates.targetCount;
+    if (updates.unit) challenge.unit = updates.unit.trim().toLowerCase();
+    if (updates.durationDays && updates.durationDays > 0) challenge.durationDays = updates.durationDays;
 
-    if (updates.startDate) {
+    if (updates.dailyGoal && updates.dailyGoal > 0) {
+      challenge.dailyGoal = updates.dailyGoal;
+    } else if (updates.targetCount || updates.durationDays) {
+      challenge.dailyGoal = Math.ceil(challenge.targetCount / (challenge.durationDays || 30));
+    }
+
+    if (updates.startDate || updates.durationDays) {
       // Normalize to UTC midnight of the intended calendar date
-      const d = new Date(updates.startDate);
+      const d = new Date(updates.startDate || challenge.startDate);
       const cleanStartDate = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0));
       challenge.startDate = cleanStartDate;
       const duration = challenge.durationDays || 30;

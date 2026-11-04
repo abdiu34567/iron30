@@ -79,7 +79,7 @@ router.post('/', async (req: Request, res: Response) => {
 router.patch('/:id', async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
-    const { userId, startDate, title, description, dailyGoal, durationDays } = req.body;
+    const { userId, startDate, title, description, dailyGoal, durationDays, targetCount, unit } = req.body;
 
     if (!userId) {
       return res.status(400).json({
@@ -93,8 +93,10 @@ router.patch('/:id', async (req: Request, res: Response) => {
       startDate: startDate ? new Date(startDate) : undefined,
       title,
       description,
-      dailyGoal: dailyGoal ? Number(dailyGoal) : undefined,
-      durationDays: durationDays ? Number(durationDays) : undefined,
+      dailyGoal: dailyGoal !== undefined && dailyGoal !== null ? Number(dailyGoal) : undefined,
+      durationDays: durationDays !== undefined && durationDays !== null ? Number(durationDays) : undefined,
+      targetCount: targetCount !== undefined && targetCount !== null ? Number(targetCount) : undefined,
+      unit,
     });
 
     if (!challenge) {

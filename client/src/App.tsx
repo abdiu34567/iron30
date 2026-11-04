@@ -9,7 +9,7 @@ import { Leaderboard } from './components/Leaderboard';
 import { CheckInModal } from './components/CheckInModal';
 import { FriendProgressModal } from './components/FriendProgressModal';
 import { CreateChallengeModal } from './components/CreateChallengeModal';
-import { EditStartDateModal } from './components/EditStartDateModal';
+import { EditChallengeModal } from './components/EditChallengeModal';
 import { ShareModal } from './components/ShareModal';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 
@@ -33,7 +33,7 @@ export function App() {
   // Modals state
   const [isCheckInOpen, setIsCheckInOpen] = useState<boolean>(false);
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
-  const [isEditDateOpen, setIsEditDateOpen] = useState<boolean>(false);
+  const [isEditOpen, setIsEditOpen] = useState<boolean>(false);
   const [isShareOpen, setIsShareOpen] = useState<boolean>(false);
   const [selectedFriendProgress, setSelectedFriendProgress] = useState<FriendProgress | null>(null);
   const [isFriendModalOpen, setIsFriendModalOpen] = useState<boolean>(false);
@@ -221,12 +221,22 @@ export function App() {
     }
   };
 
-  // Update challenge start date
-  const handleUpdateStartDate = async (challengeId: string, newStartDate: string) => {
+  // Update challenge details (creator only)
+  const handleUpdateChallenge = async (
+    challengeId: string,
+    updates: {
+      title?: string;
+      description?: string;
+      targetCount?: number;
+      unit?: string;
+      durationDays?: number;
+      startDate?: string;
+    }
+  ) => {
     const res = await fetch(`/api/challenges/${challengeId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ startDate: newStartDate, userId: user.id }),
+      body: JSON.stringify({ ...updates, userId: user.id }),
     });
 
     const json = await res.json();
@@ -234,7 +244,7 @@ export function App() {
       setSelectedChallenge(json.data);
       await Promise.all([fetchChallenges(), fetchLeaderboard(challengeId)]);
     } else {
-      throw new Error(json.error || 'Failed to update starting date');
+      throw new Error(json.error || 'Failed to update challenge details');
     }
   };
 
@@ -359,9 +369,9 @@ export function App() {
               setIsCheckInOpen(true);
             }}
             onShare={handleShare}
-            onOpenEditDate={() => {
+            onOpenEdit={() => {
               triggerHaptic('light');
-              setIsEditDateOpen(true);
+              setIsEditOpen(true);
             }}
           />
         ) : (
@@ -445,11 +455,11 @@ export function App() {
         />
 
         {selectedChallenge && (
-          <EditStartDateModal
+          <EditChallengeModal
             challenge={selectedChallenge}
-            isOpen={isEditDateOpen}
-            onClose={() => setIsEditDateOpen(false)}
-            onUpdateStartDate={handleUpdateStartDate}
+            isOpen={isEditOpen}
+            onClose={() => setIsEditOpen(false)}
+            onUpdateChallenge={handleUpdateChallenge}
             triggerHaptic={triggerHaptic}
           />
         )}
