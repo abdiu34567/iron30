@@ -4,12 +4,85 @@ import { ChallengeService } from '../services/challengeService';
 
 let botInstance: Bot | null = null;
 
-/**
- * Creates the appropriate keyboard for private chats vs group chats.
- * NOTE: Telegram Bot API prohibits `web_app` buttons in group chats (error 400 BUTTON_TYPE_INVALID).
- * In groups, a `url` button pointing to `https://t.me/BotUsername/app` must be used instead,
- * which opens the Telegram Mini App natively in the group sheet!
- */
+function getChallengeDayBadge(startDate: Date | string, durationDays: number): string {
+  const startDateStr =
+    typeof startDate === 'string' && /^\d{4}-\d{2}-\d{2}/.test(startDate)
+      ? startDate.slice(0, 10)
+      : new Date(startDate).toISOString().slice(0, 10);
+  const [sy, sm, sd] = startDateStr.split('-').map(Number);
+  const startUtc = new Date(Date.UTC(sy, sm - 1, sd, 0, 0, 0));
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const [ty, tm, td] = [year, month, day].map(Number);
+  const todayUtc = new Date(Date.UTC(ty, tm - 1, td, 0, 0, 0));
+
+  const dayDiff = Math.round((todayUtc.getTime() - startUtc.getTime()) / (1000 * 60 * 60 * 24));
+  if (dayDiff < 0) {
+    const daysUntil = Math.abs(dayDiff);
+    return `Starts in ${daysUntil}d`;
+  }
+  const dayNumber = Math.min(durationDays, dayDiff + 1);
+  return `Day ${dayNumber}/${durationDays}`;
+}
+
+function formatChallengeDigest(challenges: any[]): string {
+  if (challenges.length === 1) {
+    const c = challenges[0];
+    const badge = getChallengeDayBadge(c.startDate, c.durationDays);
+    return (
+      `☀️ *Good morning team!* Daily check-in time!\n\n` +
+      `🎯 *Active Challenge*: ${c.title} (${badge})\n` +
+      `📊 *Daily Target*: ${c.dailyGoal.toLocaleString()} ${c.unit} / day\n` +
+      `👥 *Participants*: ${c.participantCount} members\n\n` +
+      `Consistency is everything. Tap below to log your progress! 👇`
+    );
+  }
+
+  let text = `☀️ *Good morning team!* Daily check-in briefing!\n\nHere are your squad's active challenges:\n\n`;
+  challenges.forEach((c, index) => {
+    const numEmoji = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣'][index] || '🎯';
+    const badge = getChallengeDayBadge(c.startDate, c.durationDays);
+    const icon = c.unit === 'pushups' ? '🏋️' : c.unit === 'trades' ? '📈' : '🎯';
+    text += `${numEmoji} ${icon} *${c.title}* (${badge})\n`;
+    text += `   🎯 *Goal*: ${c.dailyGoal.toLocaleString()} ${c.unit}/day · 👥 *Squad*: ${c.participantCount}\n\n`;
+  });
+  text += `Tap any challenge below to log today's progress! 👇`;
+  return text;
+}
+
+function createMultiChallengeKeyboard(
+  botUsername: string,
+  webAppUrl: string,
+  isPrivate: boolean,
+  challenges: any[]
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  const appShortName = process.env.TELEGRAM_APP_SHORT_NAME || 'app';
+
+  challenges.forEach((c) => {
+    const icon = c.unit === 'pushups' ? '🏋️' : c.unit === 'trades' ? '📈' : '🎯';
+    const shortTitle = c.title.length > 20 ? `${c.title.slice(0, 18)}…` : c.title;
+    const btnLabel = `${icon} ${shortTitle}`;
+
+    if (isPrivate && webAppUrl.startsWith('https://')) {
+      keyboard.webApp(btnLabel, `${webAppUrl}?challengeId=${c._id.toString()}`).row();
+    } else {
+      keyboard.url(btnLabel, `https://t.me/${botUsername}/${appShortName}?startapp=${c._id.toString()}`).row();
+    }
+  });
+
+  if (isPrivate && webAppUrl.startsWith('https://')) {
+    keyboard.webApp('🛡️ Open Challenge Hub', webAppUrl);
+  } else {
+    keyboard.url('🛡️ Open Challenge Hub', `https://t.me/${botUsername}/${appShortName}`);
+  }
+
+  return keyboard;
+}
+
 function createAppKeyboard(
   botUsername: string,
   webAppUrl: string,
@@ -47,32 +120,53 @@ export function setupBot(): Bot | null {
 
     const webAppUrl = process.env.WEBAPP_URL || 'https://t.me';
 
-    // Handle /start, /app, /hub, /challenge commands
-    bot.command(['start', 'app', 'hub', 'challenge'], async (ctx) => {
+    // Handle /start, /app, /hub, /challenge, /challenges commands
+    bot.command(['start', 'app', 'hub', 'challenge', 'challenges'], async (ctx) => {
       const isPrivate = ctx.chat?.type === 'private';
       const botUsername = ctx.me.username || 'Iron30Bot';
       const startParam = ctx.match?.trim();
-      const keyboard = createAppKeyboard(botUsername, webAppUrl, isPrivate, startParam);
-
-      let msg = `🛡️ *Iron30 Challenge Hub*\n\nTrack your progress, view the group leaderboard, and inspect your friends' 30-day consistency heatmaps.\n\nTap below to open the app anytime! 👇`;
 
       if (startParam) {
         try {
           const challenge = await ChallengeService.getChallengeById(startParam);
           if (challenge) {
-            msg =
+            const badge = getChallengeDayBadge(challenge.startDate, challenge.durationDays);
+            const msg =
               `🔥 *You've been invited to join "${challenge.title}"!*\n\n` +
               `🎯 *Squad Target*: ${challenge.targetCount.toLocaleString()} ${challenge.unit}\n` +
               `📊 *Daily Goal*: ${challenge.dailyGoal.toLocaleString()} ${challenge.unit} / day\n` +
-              `📅 *Duration*: ${challenge.durationDays} Days\n` +
+              `📅 *Timeline*: ${badge} (${challenge.durationDays} Days)\n` +
               `👥 *Current Squad*: ${challenge.participantCount} members\n\n` +
               `Tap below to accept the challenge and start logging your progress! 👇`;
+            const keyboard = createAppKeyboard(botUsername, webAppUrl, isPrivate, startParam);
+            await ctx.reply(msg, { parse_mode: 'Markdown', reply_markup: keyboard });
+            return;
           }
         } catch (e) {
           console.warn('Failed to fetch challenge for /start param:', e);
         }
       }
 
+      // Default or /challenges command: show all active challenges with direct quick-action buttons
+      try {
+        const activeChallenges = await ChallengeService.getChallenges('active');
+        if (activeChallenges.length > 0) {
+          const msg = formatChallengeDigest(activeChallenges);
+          const keyboard = createMultiChallengeKeyboard(
+            botUsername,
+            webAppUrl,
+            isPrivate,
+            activeChallenges
+          );
+          await ctx.reply(msg, { parse_mode: 'Markdown', reply_markup: keyboard });
+          return;
+        }
+      } catch (e) {
+        console.warn('Failed to fetch active challenges for /challenges:', e);
+      }
+
+      const keyboard = createAppKeyboard(botUsername, webAppUrl, isPrivate);
+      const msg = `🛡️ *Iron30 Challenge Hub*\n\nTrack your progress, view group leaderboards, and inspect your friends' consistency heatmaps.\n\nTap below to open the app anytime! 👇`;
       await ctx.reply(msg, {
         parse_mode: 'Markdown',
         reply_markup: keyboard,
@@ -90,28 +184,20 @@ export function setupBot(): Bot | null {
           const activeChallenges = await ChallengeService.getChallenges('active');
 
           if (activeChallenges.length > 0) {
-            const firstChallenge = activeChallenges[0];
             const botInfo = await bot.api.getMe();
+            const msg = formatChallengeDigest(activeChallenges);
             // Since this message goes to a group, isPrivate is false
-            const keyboard = createAppKeyboard(
+            const keyboard = createMultiChallengeKeyboard(
               botInfo.username,
               webAppUrl,
               false,
-              firstChallenge._id.toString()
+              activeChallenges
             );
 
-            await bot.api.sendMessage(
-              groupChatId,
-              `☀️ *Good morning team!* Day check-in time!\n\n` +
-                `🎯 *Active Challenge*: ${firstChallenge.title}\n` +
-                `📊 *Daily Target*: ${firstChallenge.dailyGoal} ${firstChallenge.unit}\n` +
-                `👥 *Participants*: ${firstChallenge.participantCount}\n\n` +
-                `Tap below to log your reps and see where your friends stand! 👇`,
-              {
-                parse_mode: 'Markdown',
-                reply_markup: keyboard,
-              }
-            );
+            await bot.api.sendMessage(groupChatId, msg, {
+              parse_mode: 'Markdown',
+              reply_markup: keyboard,
+            });
           }
         } catch (err) {
           console.error('Error dispatching daily group message:', err);

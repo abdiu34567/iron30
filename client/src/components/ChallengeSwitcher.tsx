@@ -1,6 +1,6 @@
 import React from 'react';
 import { Challenge } from '../types';
-import { Plus, Flame, CheckCircle, Users } from 'lucide-react';
+import { Plus, Flame, CheckCircle, Users, Pin } from 'lucide-react';
 
 interface ChallengeSwitcherProps {
   challenges: Challenge[];
@@ -8,6 +8,7 @@ interface ChallengeSwitcherProps {
   onSelect: (challenge: Challenge) => void;
   onOpenCreate: () => void;
   joinedChallengeIds: Set<string>;
+  pinnedChallengeId?: string | null;
   triggerHaptic: (type?: any) => void;
 }
 
@@ -17,8 +18,18 @@ export const ChallengeSwitcher: React.FC<ChallengeSwitcherProps> = ({
   onSelect,
   onOpenCreate,
   joinedChallengeIds,
+  pinnedChallengeId,
   triggerHaptic,
 }) => {
+  const sortedChallenges = React.useMemo(() => {
+    if (!pinnedChallengeId) return challenges;
+    return [...challenges].sort((a, b) => {
+      if (a._id === pinnedChallengeId) return -1;
+      if (b._id === pinnedChallengeId) return 1;
+      return 0;
+    });
+  }, [challenges, pinnedChallengeId]);
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between px-1">
@@ -38,9 +49,10 @@ export const ChallengeSwitcher: React.FC<ChallengeSwitcherProps> = ({
       </div>
 
       <div className="flex gap-2.5 overflow-x-auto pb-1.5 scrollbar-none snap-x snap-mandatory">
-        {challenges.map((c) => {
+        {sortedChallenges.map((c) => {
           const isSelected = c._id === selectedChallengeId;
           const isJoined = joinedChallengeIds.has(c._id);
+          const isPinned = c._id === pinnedChallengeId;
 
           const startDateStr =
             typeof c.startDate === 'string' && /^\d{4}-\d{2}-\d{2}/.test(c.startDate)
@@ -83,9 +95,17 @@ export const ChallengeSwitcher: React.FC<ChallengeSwitcherProps> = ({
               )}
 
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700/60">
-                  {badgeText}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700/60">
+                    {badgeText}
+                  </span>
+                  {isPinned && (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded-full border border-amber-500/30">
+                      <Pin className="w-2.5 h-2.5 fill-amber-400" />
+                      <span>Pinned</span>
+                    </span>
+                  )}
+                </div>
 
                 {isJoined ? (
                   <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">

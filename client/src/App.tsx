@@ -30,6 +30,47 @@ export function App() {
   // Track handled deep link so startParam only activates on initial load, not overriding user selections
   const handledStartParamRef = useRef<string | null>(null);
 
+  // Pinned Challenge state (per user)
+  const [pinnedChallengeId, setPinnedChallengeId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(`iron30_pinned_challenge_${user?.id || 'default'}`);
+    } catch {
+      return null;
+    }
+  });
+
+  // Sync pinned challenge if user changes/loads
+  useEffect(() => {
+    if (user?.id) {
+      try {
+        const stored = localStorage.getItem(`iron30_pinned_challenge_${user.id}`);
+        if (stored) {
+          setPinnedChallengeId(stored);
+        }
+      } catch (e) {
+        console.warn('Failed to read pinned challenge:', e);
+      }
+    }
+  }, [user?.id]);
+
+  const handleTogglePin = (challengeId: string) => {
+    triggerHaptic('medium');
+    setPinnedChallengeId((prev) => {
+      const next = prev === challengeId ? null : challengeId;
+      try {
+        const key = `iron30_pinned_challenge_${user?.id || 'default'}`;
+        if (next) {
+          localStorage.setItem(key, next);
+        } else {
+          localStorage.removeItem(key);
+        }
+      } catch (e) {
+        console.warn('Failed to save pinned challenge:', e);
+      }
+      return next;
+    });
+  };
+
   // Modals state
   const [isCheckInOpen, setIsCheckInOpen] = useState<boolean>(false);
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
@@ -72,12 +113,27 @@ export function App() {
                 return startMatch;
               }
             }
-            // 3. Keep current selection if still valid
+            // 3. User's pinned challenge on initial launch
+            const activePin =
+              pinnedChallengeId ||
+              (typeof window !== 'undefined'
+                ? localStorage.getItem(`iron30_pinned_challenge_${user?.id || 'default'}`)
+                : null);
+            if (!prev && activePin) {
+              const pinnedMatch = json.data.find((c: Challenge) => c._id === activePin);
+              if (pinnedMatch) return pinnedMatch;
+            }
+            // 4. Keep current selection if still valid
             if (prev) {
               const found = json.data.find((c: Challenge) => c._id === prev._id);
               if (found) return found;
             }
-            // 4. Default to first challenge
+            // 5. Default to user's pinned challenge if exists
+            if (activePin) {
+              const pinnedMatch = json.data.find((c: Challenge) => c._id === activePin);
+              if (pinnedMatch) return pinnedMatch;
+            }
+            // 6. Default to first challenge
             return json.data[0];
           });
         }
@@ -348,6 +404,7 @@ export function App() {
             onSelect={(c) => setSelectedChallenge(c)}
             onOpenCreate={() => setIsCreateOpen(true)}
             joinedChallengeIds={joinedChallengeIds}
+            pinnedChallengeId={pinnedChallengeId}
             triggerHaptic={triggerHaptic}
           />
         )}
@@ -363,6 +420,8 @@ export function App() {
             joining={joining}
             currentUserId={user.id}
             participantCount={leaderboard.length || selectedChallenge.participantCount || 0}
+            isPinned={selectedChallenge._id === pinnedChallengeId}
+            onTogglePin={() => handleTogglePin(selectedChallenge._id)}
             onJoin={handleJoinChallenge}
             onOpenCheckIn={() => {
               triggerHaptic('light');

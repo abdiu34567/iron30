@@ -1,6 +1,6 @@
 import React from 'react';
 import { Challenge, LeaderboardUser } from '../types';
-import { Calendar, CheckCircle2, ChevronRight, Share2, PlusCircle, Rocket, Target, Users, Edit3 } from 'lucide-react';
+import { Calendar, CheckCircle2, ChevronRight, Share2, PlusCircle, Rocket, Target, Users, Edit3, Pin } from 'lucide-react';
 
 interface ChallengeCardProps {
   challenge: Challenge;
@@ -9,9 +9,11 @@ interface ChallengeCardProps {
   joining: boolean;
   currentUserId?: number;
   participantCount?: number;
+  isPinned?: boolean;
   onJoin: () => void;
   onOpenCheckIn: () => void;
   onShare: () => void;
+  onTogglePin?: () => void;
   onOpenEdit?: () => void;
   onOpenEditDate?: () => void;
 }
@@ -23,9 +25,11 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
   joining,
   currentUserId,
   participantCount,
+  isPinned = false,
   onJoin,
   onOpenCheckIn,
   onShare,
+  onTogglePin,
   onOpenEdit,
   onOpenEditDate,
 }) => {
@@ -95,9 +99,29 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({
             <Users className="w-3.5 h-3.5 text-slate-400" />
             {participantCount !== undefined ? participantCount : (challenge.participantCount || 0)}
           </span>
+          {isPinned && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+              <Pin className="w-3 h-3 fill-amber-400" />
+              <span>Pinned</span>
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-1.5">
+          {onTogglePin && (
+            <button
+              onClick={onTogglePin}
+              className={`p-1.5 rounded-xl transition-all active:scale-95 ${
+                isPinned
+                  ? 'text-amber-400 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 shadow-sm shadow-amber-500/20'
+                  : 'text-slate-400 hover:text-white bg-slate-800/60'
+              }`}
+              aria-label={isPinned ? 'Unpin Challenge' : 'Pin Challenge as Default'}
+              title={isPinned ? 'Pinned as Default (Tap to unpin)' : 'Pin as Default'}
+            >
+              <Pin className={`w-4 h-4 ${isPinned ? 'fill-amber-400' : ''}`} />
+            </button>
+          )}
           {canEdit && (
             <button
               onClick={handleEdit}
