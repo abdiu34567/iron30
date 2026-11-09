@@ -4,6 +4,7 @@ import { Participant, IParticipant } from '../models/Participant';
 import { CheckInLog, ICheckInLog } from '../models/CheckInLog';
 import { User } from '../models/User';
 import { ProgressService } from './progressService';
+import { LiveBriefingService } from './liveBriefingService';
 
 export interface CreateChallengeInput {
   title: string;
@@ -318,6 +319,11 @@ export class ChallengeService {
     await Challenge.findByIdAndUpdate(input.challengeId, {
       participantCount: realParticipantCount,
       totalCompletedCount: realTotal,
+    });
+
+    // Real-time micro-update edit on Telegram group briefing message
+    LiveBriefingService.updateBriefingsForChallenge(input.challengeId).catch((err) => {
+      console.warn('[LiveBriefing] Background update error:', err);
     });
 
     return { log, participant };
