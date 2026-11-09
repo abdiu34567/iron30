@@ -7,6 +7,7 @@ interface ShareModalProps {
   isOpen: boolean;
   onClose: () => void;
   triggerHaptic: (type?: any) => void;
+  userId?: number;
 }
 
 export const ShareModal: React.FC<ShareModalProps> = ({
@@ -14,8 +15,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   isOpen,
   onClose,
   triggerHaptic,
+  userId,
 }) => {
   const [copiedType, setCopiedType] = useState<'message' | 'web' | 'direct' | null>(null);
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [shareSuccess, setShareSuccess] = useState(false);
 
   if (!isOpen) return null;
 
@@ -55,13 +59,45 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     }
   };
 
-  const handleForwardToChat = () => {
+  const handleForwardToChat = async () => {
     triggerHaptic('medium');
     const tg = typeof window !== 'undefined' ? window.Telegram?.WebApp : null;
 
+    // Use Telegram native savePreparedInlineMessage + shareMessage (Telegram 7.8+)
+    if (tg?.shareMessage && userId) {
+      try {
+        setIsPreparing(true);
+        const res = await fetch(`/api/challenges/${challenge._id}/prepare-share`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId }),
+        });
+
+        const data = await res.json();
+        if (data.success && data.preparedMessageId) {
+          triggerHaptic('light');
+          tg.shareMessage(data.preparedMessageId, (sent: boolean) => {
+            if (sent) {
+              triggerHaptic('success');
+              setShareSuccess(true);
+              setTimeout(() => {
+                setShareSuccess(false);
+                onClose();
+              }, 1600);
+            }
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn('Failed to prepare inline message, falling back to direct share:', err);
+      } finally {
+        setIsPreparing(false);
+      }
+    }
+
+    // Fallback: In Telegram Mini App, openTelegramLink natively opens the chat chooser
     if (tg) {
       try {
-        // In Telegram Mini App, openTelegramLink natively opens the chat chooser
         if (tg.openTelegramLink) {
           tg.openTelegramLink(tgShareUrl);
           return;
@@ -110,7 +146,21 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
         <div className="mt-4 space-y-4">
           {/* Challenge Preview Card */}
-          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
+          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 overflow-hidden relative">
+            <div className="relative mb-3 rounded-xl overflow-hidden border border-slate-800">
+              <img
+                src="/og-banner.jpg"
+                alt="Challenge Banner"
+                className="w-full h-28 object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+              <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+                <span className="text-[10px] font-extrabold text-blue-300 uppercase tracking-wider bg-blue-950/85 backdrop-blur-md px-2 py-0.5 rounded-full border border-blue-400/30 shadow-md">
+                  ✨ Native Telegram Banner Card
+                </span>
+              </div>
+            </div>
+
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
                 Squad Challenge
@@ -134,10 +184,25 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           {/* Action 1: Forward Directly inside Telegram */}
           <button
             onClick={handleForwardToChat}
-            className="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm rounded-2xl shadow-lg shadow-blue-600/30 active:scale-98 transition-all flex items-center justify-center gap-2.5"
+            disabled={isPreparing}
+            className="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm rounded-2xl shadow-lg shadow-blue-600/30 active:scale-98 transition-all flex items-center justify-center gap-2.5 disabled:opacity-75"
           >
-            <Send className="w-4 h-4" />
-            <span>Forward to Telegram Chat or Group</span>
+            {isPreparing ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Preparing Banner Invite...</span>
+              </>
+            ) : shareSuccess ? (
+              <>
+                <Check className="w-4 h-4 text-emerald-300" />
+                <span>Challenge Shared! 🔥</span>
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                <span>Send with Banner &amp; Join Button</span>
+              </>
+            )}
           </button>
 
           <div className="relative my-2">

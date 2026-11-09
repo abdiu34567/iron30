@@ -9,6 +9,7 @@ export interface DayHeatmapItem {
   targetCount: number;
   loggedCount: number;
   status: 'completed' | 'partial' | 'missed' | 'future' | 'today';
+  isToday: boolean;
 }
 
 export interface FriendProgressSummary {
@@ -96,10 +97,11 @@ export class ProgressService {
       const hasLogged = dailyLoggedDays.has(dateStr);
       const logged = dailyMap.get(dateStr) || 0;
 
+      const isToday = dateStr === todayStr;
       let status: 'completed' | 'partial' | 'missed' | 'future' | 'today';
       if (dateStr > todayStr) {
         status = 'future';
-      } else if (dateStr === todayStr) {
+      } else if (isToday) {
         if (hasLogged) {
           status = dailyGoal > 0 && logged >= dailyGoal ? 'completed' : 'partial';
         } else {
@@ -121,6 +123,7 @@ export class ProgressService {
         targetCount: dailyGoal,
         loggedCount: logged,
         status,
+        isToday,
       });
     }
 

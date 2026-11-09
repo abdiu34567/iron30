@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { ChallengeService } from '../services/challengeService';
+import { getBot } from '../bot/bot';
 
 const router = Router();
 
@@ -143,6 +144,84 @@ router.get('/:id/leaderboard', async (req: Request, res: Response) => {
     const leaderboard = await ChallengeService.getLeaderboard(id);
     res.json({ success: true, data: leaderboard });
   } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+function escapeHtml(text: string): string {
+  return (text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// POST prepare inline message for Telegram WebApp shareMessage
+router.post('/:id/prepare-share', async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id as string;
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'userId is required' });
+    }
+
+    const challenge = await ChallengeService.getChallengeById(id);
+    if (!challenge) {
+      return res.status(404).json({ success: false, error: 'Challenge not found' });
+    }
+
+    const bot = getBot();
+    if (!bot) {
+      return res.status(503).json({ success: false, error: 'Telegram Bot is not initialized' });
+    }
+
+    const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'Iron30Bot';
+    const appShortName = process.env.TELEGRAM_APP_SHORT_NAME || 'app';
+    const host = req.get('host') || 'iron30.onrender.com';
+    const protocol = host.includes('localhost') ? 'http' : 'https';
+    const bannerUrl = process.env.BANNER_URL || `${protocol}://${host}/og-banner.jpg`;
+    const startAppUrl = `https://t.me/${botUsername}/${appShortName}?startapp=${challenge._id}`;
+
+    const caption =
+      `🔥 <b>${escapeHtml(challenge.title)}</b>\n\n` +
+      `🎯 <b>Target:</b> ${challenge.targetCount.toLocaleString()} ${escapeHtml(challenge.unit)}\n` +
+      `⚡ <b>Daily Goal:</b> ${challenge.dailyGoal.toLocaleString()} ${escapeHtml(challenge.unit)} / day\n` +
+      `📅 <b>Duration:</b> ${challenge.durationDays} Days\n` +
+      `👥 <b>Squad Members:</b> ${challenge.participantCount || 1}\n\n` +
+      `Tap below to accept and track your daily streak! 👇`;
+
+    const prepared = await (bot.api.raw as any).savePreparedInlineMessage({
+      user_id: Number(userId),
+      result: {
+        type: 'photo',
+        id: `c_${challenge._id}_${Date.now()}`,
+        photo_url: bannerUrl,
+        thumbnail_url: bannerUrl,
+        title: challenge.title,
+        description: `Target: ${challenge.targetCount.toLocaleString()} ${challenge.unit}`,
+        caption,
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: '🔥 Accept & Join Squad',
+                url: startAppUrl,
+              },
+            ],
+          ],
+        },
+      },
+      allow_user_chats: true,
+      allow_bot_chats: true,
+      allow_group_chats: true,
+      allow_channel_chats: true,
+    });
+
+    res.json({ success: true, preparedMessageId: prepared.id });
+  } catch (error: any) {
+    console.error('savePreparedInlineMessage error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

@@ -3,6 +3,7 @@ import { FriendProgress, DayHeatmapItem } from '../types';
 import { UserAvatar } from './UserAvatar';
 import { X, Flame, BellRing, Check, Calendar, Clock, MessageSquare, PlusCircle, Plus } from 'lucide-react';
 import { parseLoggedAmount, toggleAmountSign, formatLoggedAmount } from '../utils/numberUtils';
+import { toLocalYYYYMMDD } from '../utils/dateUtils';
 
 interface FriendProgressModalProps {
   progress: FriendProgress | null;
@@ -43,6 +44,7 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
   const heatmap = progress.heatmap || [];
   const recentLogs = progress.recentLogs || [];
   const isCurrentUser = currentUserId !== undefined && participant?.userId === currentUserId;
+  const localToday = toLocalYYYYMMDD(new Date());
 
   const handleDayClick = (item: DayHeatmapItem) => {
     triggerHaptic('light');
@@ -237,22 +239,34 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
 
             {/* Grid of days */}
             <div className="grid grid-cols-6 gap-2">
-              {heatmap.map((item) => (
-                <button
-                  key={item.dayNumber}
-                  onClick={() => handleDayClick(item)}
-                  type="button"
-                  title={isCurrentUser ? `Tap to log Day ${item.dayNumber}` : `Day ${item.dayNumber}`}
-                  className={`h-9 rounded-xl flex flex-col items-center justify-center text-[11px] font-black transition-all active:scale-90 ${getHeatmapColor(
-                    item
-                  )} ${selectedDay?.dayNumber === item.dayNumber ? 'ring-2 ring-white/80' : ''}`}
-                >
-                  <span>D{item.dayNumber}</span>
-                  <span className="text-[9px] font-bold opacity-90">
-                    {item.status !== 'future' && (item.loggedCount !== 0 ? formatLoggedAmount(item.loggedCount) : (item.status === 'completed' || item.status === 'partial' ? '0' : '-'))}
-                  </span>
-                </button>
-              ))}
+              {heatmap.map((item) => {
+                const isItemToday = Boolean(item.isToday || item.date === localToday || item.status === 'today');
+                return (
+                  <button
+                    key={item.dayNumber}
+                    onClick={() => handleDayClick(item)}
+                    type="button"
+                    title={isCurrentUser ? `Tap to log Day ${item.dayNumber}${isItemToday ? ' (Today)' : ''}` : `Day ${item.dayNumber}`}
+                    className={`h-9 rounded-xl flex flex-col items-center justify-center text-[11px] font-black transition-all active:scale-90 ${getHeatmapColor(
+                      item
+                    )} ${
+                      selectedDay?.dayNumber === item.dayNumber
+                        ? 'ring-2 ring-white/90 scale-105'
+                        : isItemToday
+                        ? 'ring-2 ring-blue-400 ring-offset-2 ring-offset-slate-900 shadow-md shadow-blue-500/30'
+                        : ''
+                    }`}
+                  >
+                    <span className="flex items-center gap-0.5">
+                      D{item.dayNumber}
+                      {isItemToday && <span className="w-1.5 h-1.5 rounded-full bg-blue-300 animate-pulse" />}
+                    </span>
+                    <span className="text-[9px] font-bold opacity-90">
+                      {item.status !== 'future' && (item.loggedCount !== 0 ? formatLoggedAmount(item.loggedCount) : (item.status === 'completed' || item.status === 'partial' ? '0' : '-'))}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
             {selectedDay && (
@@ -323,12 +337,15 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
             <button
               onClick={() => {
                 triggerHaptic('light');
-                const todayItem = heatmap.find((h) => h.status === 'today') || heatmap[0];
+                const todayItem = heatmap.find((h) => h.isToday || h.date === localToday || h.status === 'today');
                 if (todayItem) {
                   setQuickLogDay(todayItem);
                   setQuickCount(String(todayItem.targetCount || 100));
                 } else if (onOpenCheckIn) {
                   onOpenCheckIn();
+                } else {
+                  setToastMessage("Today is outside this challenge schedule");
+                  setTimeout(() => setToastMessage(null), 3000);
                 }
               }}
               className="w-full py-3.5 px-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-600/30 active:scale-98 transition-all"
@@ -378,7 +395,7 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
                   <span>Log Day {quickLogDay.dayNumber}</span>
                 </h4>
                 <p className="text-xs text-slate-400">
-                  {quickLogDay.status === 'today' ? 'Today' : quickLogDay.date} · Target: {quickLogDay.targetCount} {unit}
+                  {quickLogDay.isToday || quickLogDay.status === 'today' || quickLogDay.date === localToday ? 'Today' : quickLogDay.date} · Target: {quickLogDay.targetCount} {unit}
                 </p>
               </div>
               <button

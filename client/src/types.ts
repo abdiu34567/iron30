@@ -35,6 +35,7 @@ export interface DayHeatmapItem {
   targetCount: number;
   loggedCount: number;
   status: 'completed' | 'partial' | 'missed' | 'future' | 'today';
+  isToday?: boolean;
 }
 
 export interface FriendProgress {

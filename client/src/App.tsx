@@ -12,6 +12,7 @@ import { CreateChallengeModal } from './components/CreateChallengeModal';
 import { EditChallengeModal } from './components/EditChallengeModal';
 import { ShareModal } from './components/ShareModal';
 import { RefreshCw, AlertCircle } from 'lucide-react';
+import { toLocalYYYYMMDD } from './utils/dateUtils';
 
 export function App() {
   const { user, triggerHaptic, tg, isTelegram, startParam } = useTelegram();
@@ -249,7 +250,7 @@ export function App() {
         photoUrl: user.photo_url,
         count,
         note,
-        date,
+        date: date || toLocalYYYYMMDD(new Date()),
       }),
     });
 
@@ -529,6 +530,7 @@ export function App() {
             isOpen={isShareOpen}
             onClose={() => setIsShareOpen(false)}
             triggerHaptic={triggerHaptic}
+            userId={user.id}
           />
         )}
       </div>
