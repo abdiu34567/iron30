@@ -3,7 +3,7 @@ import { FriendProgress, DayHeatmapItem } from '../types';
 import { UserAvatar } from './UserAvatar';
 import { X, Flame, BellRing, Check, Calendar, Clock, MessageSquare, PlusCircle, Plus } from 'lucide-react';
 import { parseLoggedAmount, toggleAmountSign, formatLoggedAmount } from '../utils/numberUtils';
-import { toLocalYYYYMMDD } from '../utils/dateUtils';
+import { toLocalYYYYMMDD, formatLogTimestamp } from '../utils/dateUtils';
 
 interface FriendProgressModalProps {
   progress: FriendProgress | null;
@@ -307,25 +307,43 @@ export const FriendProgressModal: React.FC<FriendProgressModalProps> = ({
               <div className="text-xs text-slate-500 text-center py-4">No check-ins yet.</div>
             ) : (
               <div className="space-y-2 max-h-48 overflow-y-auto">
-                {recentLogs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/60 flex items-center justify-between text-xs"
-                  >
-                    <div>
-                      <div className="font-bold text-white">
-                        {formatLoggedAmount(log.count)} {unit}
-                      </div>
-                      {log.note && (
-                        <div className="text-slate-400 text-[11px] flex items-center gap-1 mt-0.5">
-                          <MessageSquare className="w-3 h-3 text-slate-500" />
-                          <span>"{log.note}"</span>
+                {recentLogs.map((log) => {
+                  const stamp = formatLogTimestamp(log.date, log.createdAt);
+                  return (
+                    <div
+                      key={log.id}
+                      className="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/60 flex items-center justify-between text-xs hover:border-slate-700/80 transition-colors"
+                    >
+                      <div className="min-w-0 pr-2">
+                        <div className="font-bold text-white">
+                          {formatLoggedAmount(log.count)} {unit}
                         </div>
-                      )}
+                        {log.note && (
+                          <div className="text-slate-400 text-[11px] flex items-center gap-1 mt-0.5 truncate">
+                            <MessageSquare className="w-3 h-3 text-slate-500 shrink-0" />
+                            <span className="truncate">"{log.note}"</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0">
+                        {stamp.time ? (
+                          <>
+                            <div className="text-[11px] font-bold text-slate-200">
+                              {stamp.time}
+                            </div>
+                            <div className="text-[10px] text-slate-500 font-medium">
+                              {stamp.date}
+                            </div>
+                          </>
+                        ) : (
+                          <span className="text-[10px] text-slate-500 font-medium">
+                            {stamp.date}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-[10px] text-slate-500 font-medium">{log.date}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

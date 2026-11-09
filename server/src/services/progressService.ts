@@ -170,7 +170,7 @@ export class ProgressService {
         remainingToGoal,
       },
       heatmap,
-      recentLogs: logs.slice(0, 15).map((l) => ({
+      recentLogs: logs.slice(0, 30).map((l) => ({
         id: l._id.toString(),
         count: l.count,
         date: l.date,
